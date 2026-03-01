@@ -13,21 +13,109 @@ syncronizing databases, and performing system maintenance tasks.
 It provides functionality similar to traditional package managers 
 with extended support for AUR and Flatpak.
 
-.\" This section needs some time. It's important to add every single option there is by default.
-.SH OPTIONS
-.TP
-.B -h, --help
-Print help information
-
-.TP
-.B -h, --version
-Print version information
 
 .\" After this point, there should be information on every command available to shelly.
 
-.SH COMMANDS  
+.SH COMMANDS
 
-.\" Now, some examples to finish the explanation
+.TP
+.B version
+Display the application version.
+
+.TP
+.B sync
+.br
+Synchronize package databases.
+
+.TP
+.BI list-installed
+List all installed packages.
+
+.TP
+.B list-available
+List all available packages.
+
+.TP
+.B list-updates
+List packages that need updates.
+
+.TP
+.BI "info " "<packages>"
+Display information about a package.
+
+.TP
+.BI "install " "<packages>"
+Install one or more packages.
+
+.TP
+.B install-local
+Install a local package file (.xz, .gz, .zst).
+
+.TP
+.B "remove " "<packages>"
+Remove one or more packages.
+
+.TP
+.BI "update " "<packages>"
+Update one or more packages.
+
+.TP
+.B upgrade
+Perform a full system upgrade.
+
+.TP
+.BI "downgrade " "<packages>"
+Downgrade one or more packages.
+
+.TP
+.B keyring
+Manage pacman keyring.
+
+.TP
+.B aur
+.br
+Manage AUR packages.
+
+.TP
+.B flatpak
+Manage Flatpak packages.
+
+.TP
+.B utility
+Execute Shelly utility commands.
+
+.SH OPTIONS
+
+.TP
+.B -h, --help
+Print help information.
+
+.TP
+.B -v, --version
+Print version information.
+
+.TP
+.B -j, --json
+Output results in JSON format for UI integration and scripting.
+
+.TP
+.B -y, --sync
+Synchronize package databases before performing the operation.
+
+.TP
+.B -f, --force
+Force the operation, even if it would normally be skipped or blocked.
+
+.TP
+.B -n, --no-confirm
+Proceed without asking for user confirmation .
+
+
+.SH AUR OPTIONS
+
+.SH FLATPAK OPTIONS
+
+.\" Now, some examples to finish the explanation - This needs some work still
 
 .SH EXAMPLES
 
