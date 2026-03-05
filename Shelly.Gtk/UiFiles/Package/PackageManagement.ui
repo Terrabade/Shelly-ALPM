@@ -4,24 +4,37 @@
   <object class="GtkBox" id="PackageManagement">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkBox" id="header_row">
-        <property name="spacing">10</property>
-        <property name="margin-top">10</property>
-        <property name="margin-bottom">10</property>
-        <child>
-          <object class="GtkLabel">
-            <property name="label">Package Management</property>
-            <style>
-              <class name="title-1"/>
-            </style>
-          </object>
-        </child>
-        <child>
-          <object class="GtkSearchEntry" id="search_entry">
-            <property name="hexpand">true</property>
-          </object>
-        </child>
-      </object>
+      <object class="GtkBox">
+     <property name="halign">baseline</property>
+     <property name="margin-bottom">10</property>
+     <property name="spacing">5</property>
+      <child>
+        <object class="GtkButton" id="remove_button">
+          <property name="halign">start</property>
+          <property name="label">Remove Selected</property>
+          <style>
+            <class name="suggested-action"/>
+          </style>
+        </object>
+      </child>
+      <child>
+        <object class="GtkBox">
+          <property name="hexpand">true</property>
+        </object>
+      </child>
+      <child>
+        <object class="GtkSearchEntry" id="search_entry">
+          <property name="placeholder-text">Search packages...</property>
+          <property name="width-request">200</property>
+        </object>
+      </child>
+      <child>
+        <object class="GtkButton" id="sync_button">
+          <property name="icon-name">view-refresh-symbolic</property>
+          <property name="tooltip-text">Sync</property>
+        </object>
+      </child>
+    </object>
     </child>
     <child>
       <object class="GtkScrolledWindow">

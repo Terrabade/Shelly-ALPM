@@ -8,4 +8,12 @@ public partial class AlpmPackageGObject
 {
     public AlpmPackageDto? Package { get; set; }
     public bool IsSelected { get; set; }
+
+    public event EventHandler? OnSelectionToggled;
+
+    public void ToggleSelection()
+    {
+        IsSelected = !IsSelected;
+        OnSelectionToggled?.Invoke(this, EventArgs.Empty);
+    }
 }

@@ -10,8 +10,10 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
 {
     private Box _box = null!;
     private ColumnView _columnView = null!;
+    private SingleSelection _selectionModel = null!;
     private Gio.ListStore _listStore = null!;
-    private List<AlpmPackageDto> _allPackages = [];
+    private FilterListModel _filterListModel = null!;
+    private CustomFilter _filter = null!;
     private string _searchText = string.Empty;
 
     public Widget CreateWindow()
@@ -25,19 +27,32 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
         var nameColumn = (ColumnViewColumn)builder.GetObject("name_column")!;
         var sizeColumn = (ColumnViewColumn)builder.GetObject("size_column")!;
         var versionColumn = (ColumnViewColumn)builder.GetObject("version_column")!;
+        var removeButton = (Button)builder.GetObject("remove_button")!;
 
         _listStore = Gio.ListStore.New(AlpmPackageGObject.GetGType());
-        var selectionModel = SingleSelection.New(_listStore);
-        _columnView.SetModel(selectionModel);
+        _filter = CustomFilter.New(FilterPackage);
+        _filterListModel = FilterListModel.New(_listStore, _filter);
+        _selectionModel = SingleSelection.New(_filterListModel);
+        _selectionModel.CanUnselect = true;
+        _columnView.SetModel(_selectionModel);
 
         SetupColumns(checkColumn, nameColumn, sizeColumn, versionColumn);
 
         _columnView.OnRealize += (_, _) => { _ = LoadDataAsync(); };
+        _columnView.OnActivate += (_, _) =>
+        {
+            var item = _selectionModel.GetSelectedItem();
+            if (item is AlpmPackageGObject pkgObj)
+            {
+                pkgObj.ToggleSelection();
+            }
+        };
         searchEntry.OnSearchChanged += (_, _) =>
         {
             _searchText = searchEntry.GetText();
             ApplyFilter();
         };
+        removeButton.OnClicked += (_, _) => { _ = RemoveSelectedAsync(); };
 
         return _box;
     }
@@ -50,30 +65,44 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
             var listItem = (ListItem)args.Object;
             var check = new CheckButton { MarginStart = 10, MarginEnd = 10 };
             listItem.SetChild(check);
+            
+            check.OnToggled += (s, _) =>
+            {
+                if (listItem.GetItem() is AlpmPackageGObject pkgObj)
+                {
+                    pkgObj.IsSelected = s.GetActive();
+                }
+            };
         };
+
         checkFactory.OnBind += (_, args) =>
         {
             var listItem = (ListItem)args.Object;
             if (listItem.GetItem() is not AlpmPackageGObject pkgObj ||
                 listItem.GetChild() is not CheckButton checkButton) return;
 
-            checkButton.OnToggled -= OnCheckToggled;
             checkButton.SetActive(pkgObj.IsSelected);
-            checkButton.OnToggled += OnCheckToggled;
+
+            pkgObj.OnSelectionToggled += OnExternalToggle;
             return;
 
-            void OnCheckToggled(object? s, EventArgs e)
+            void OnExternalToggle(object? s, EventArgs e)
             {
-                pkgObj.IsSelected = checkButton.GetActive();
+                if (listItem.GetItem() == pkgObj)
+                {
+                    checkButton.SetActive(pkgObj.IsSelected);
+                }
             }
         };
+
         checkColumn.SetFactory(checkFactory);
         
         var nameFactory = SignalListItemFactory.New();
         nameFactory.OnSetup += (_, args) =>
         {
             var listItem = (ListItem)args.Object;
-            listItem.SetChild(Label.New(string.Empty));
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
         };
         nameFactory.OnBind += (_, args) =>
         {
@@ -89,7 +118,8 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
         sizeFactory.OnSetup += (_, args) =>
         {
             var listItem = (ListItem)args.Object;
-            listItem.SetChild(Label.New(string.Empty));
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
         };
         sizeFactory.OnBind += (_, args) =>
         {
@@ -105,7 +135,8 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
         versionFactory.OnSetup += (_, args) =>
         {
             var listItem = (ListItem)args.Object;
-            listItem.SetChild(Label.New(string.Empty));
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
         };
         versionFactory.OnBind += (_, args) =>
         {
@@ -118,14 +149,30 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
         versionColumn.SetFactory(versionFactory);
     }
 
+    private bool FilterPackage(GObject.Object obj)
+    {
+        if (obj is not AlpmPackageGObject pkgObj || pkgObj.Package == null)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_searchText))
+            return true;
+
+        return pkgObj.Package.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+               pkgObj.Package.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task LoadDataAsync()
     {
         try
         {
-            _allPackages = await privilegedOperationService.GetInstalledPackagesAsync();
+            var packages = await privilegedOperationService.GetInstalledPackagesAsync();
             GLib.Functions.IdleAdd(0, () =>
             {
-                ApplyFilter();
+                _listStore.RemoveAll();
+                foreach (var package in packages)
+                {
+                    _listStore.Append(new AlpmPackageGObject { Package = package });
+                }
                 return false;
             });
         }
@@ -137,20 +184,36 @@ public class PackageManagement(IPrivilegedOperationService privilegedOperationSe
 
     private void ApplyFilter()
     {
-        _listStore.RemoveAll();
-        var filtered = _allPackages.AsEnumerable();
+        _filter.Changed(FilterChange.Different);
+    }
 
-        if (!string.IsNullOrWhiteSpace(_searchText))
+    private async Task RemoveSelectedAsync()
+    {
+        var selectedPackages = new List<string>();
+        for (uint i = 0; i < _listStore.GetNItems(); i++)
         {
-            filtered = filtered.Where(p =>
-                p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                p.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+            var item = _listStore.GetObject(i);
+            if (item is AlpmPackageGObject { IsSelected: true, Package: not null } pkgObj)
+            {
+                selectedPackages.Add(pkgObj.Package.Name);
+            }
         }
 
-        foreach (var package in filtered)
+        if (selectedPackages.Count != 0)
         {
-            var obj = new AlpmPackageGObject { Package = package };
-            _listStore.Append(obj);
+            try
+            {
+                var result = await privilegedOperationService.RemovePackagesAsync(selectedPackages, false, false);
+                await LoadDataAsync();
+            }
+            catch (Exception e)
+            {
+                //this needs to log to a toast message
+            }
+            finally
+            {
+                //always exit globally busy in case of failure
+            }
         }
     }
 }
