@@ -6,7 +6,10 @@
   <img src="demo_part1.gif" width="32%">
   <img src="demo_part2.gif" width="32%">
   <img src="demo_part3.gif" width="32%">
+  <img width="1675" height="1127" alt="image" src="https://github.com/user-attachments/assets/195b4f02-33af-4a33-813d-5e0e25b276bb" />
 </p>
+
+### We are currently migrating from avalonia to GTK for native wayland support!
 
 ### About
 
