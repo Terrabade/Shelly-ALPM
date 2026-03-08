@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         pacman -Syu --noconfirm
-        pacman -S --noconfirm dotnet-sdk base-devel libx11 libice libsm fontconfig freetype2 libxcursor libxext libxfixes libxi libxinerama libxrandr libxrender libxtst mesa gtk3
+        pacman -S --noconfirm dotnet-sdk base-devel gtk4
 
     - name: Restore dependencies
       run: dotnet restore

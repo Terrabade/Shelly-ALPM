@@ -1,0 +1,81 @@
+.rounded-card {
+    border-radius: 12px;
+    border: 1px solid alpha(currentColor, 0.15);
+    overflow: hidden;
+    clip-path: inset(0 round 12px);
+}
+
+.rounded-card viewport,
+.rounded-card list,
+.rounded-card listview,
+.rounded-card columnview {
+    border-radius: 12px;
+    background-clip: padding-box;
+}
+
+.nav-button,
+.nav-button button {
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}
+
+.nav-button:hover,
+.nav-button button:hover {
+    background: alpha(currentColor, 0.1);
+}
+
+.lockout-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.lockout-description {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: white;
+}
+
+#LockoutProgressBar {
+    min-height: 12px;
+}
+
+columnview header,
+columnview header > button {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+columnview header:hover,
+columnview header > button:hover {
+    background-color: alpha(currentColor, 0.1);
+}
+
+columnview header:checked,
+columnview header > button:checked {
+    background-color: alpha(currentColor, 0.2);
+}
+
+.spaced-search text {
+    padding-left: 4px;
+}
+
+.dialog-overlay {
+    background-color: @theme_bg_color;
+    border: 1px solid @borders;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    padding: 24px;
+}
+
+.error-label {
+    color: @error;
+    font-size: 0.9em;
+    margin-top: 4px;
+}
+
+scrolledwindow > scrollbar {
+    border: none;
+}

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkBox" id="FlatpakRemoveWindow">
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">horizontal</property>
+        <property name="spacing">5</property>
+        <property name="margin-bottom">10</property>
+        <property name="halign">baseline</property>
+        <child>
+          <object class="GtkButton" id="remove_button">
+            <property name="label">Remove Selected</property>
+            <property name="halign">end</property>
+            <style>
+              <class name="destructive-action"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="hexpand">true</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkSearchEntry" id="search_entry">
+            <property name="width-request">200</property>
+            <property name="placeholder-text">Search packages...</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="reload_button">
+            <property name="icon-name">view-refresh-symbolic</property>
+            <property name="tooltip-text">Reload</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow">
+        <property name="overlay-scrolling">false</property>
+        <property name="vexpand">true</property>
+        <property name="hexpand">true</property>
+        <child>
+          <object class="GtkListView" id="installed_flatpaks"/>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

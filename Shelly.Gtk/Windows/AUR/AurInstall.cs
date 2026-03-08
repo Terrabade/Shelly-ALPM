@@ -1,0 +1,310 @@
+using System.Globalization;
+using Gtk;
+using Shelly.Gtk.Helpers;
+using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
+using Shelly.Gtk.UiModels.AUR.GObjects;
+
+namespace Shelly.Gtk.Windows.AUR;
+
+public class AurInstall(
+    IPrivilegedOperationService privilegedOperationService,
+    ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
+{
+    private Box _box = null!;
+    private readonly CancellationTokenSource _cts = new();
+    private ColumnView _columnView = null!;
+    private SingleSelection _selectionModel = null!;
+    private Gio.ListStore _listStore = null!;
+    private string _searchText = string.Empty;
+    private SearchEntry _searchEntry = null!;
+    private SignalListItemFactory _checkFactory = null!;
+    private SignalListItemFactory _nameFactory = null!;
+    private SignalListItemFactory _votesFactory = null!;
+    private SignalListItemFactory _popFactory = null!;
+    private SignalListItemFactory _versionFactory = null!;
+
+    public Widget CreateWindow()
+    {
+        var builder = Builder.NewFromString(ResourceHelper.LoadUiFile("UiFiles/AUR/AurWindow.ui"), -1);
+        _box = (Box)builder.GetObject("AurInstallWindow")!;
+        _columnView = (ColumnView)builder.GetObject("package_grid")!;
+        _searchEntry = (SearchEntry)builder.GetObject("search_entry")!;
+
+        var checkColumn = (ColumnViewColumn)builder.GetObject("check_column")!;
+        var nameColumn = (ColumnViewColumn)builder.GetObject("name_column")!;
+        var votesColumn = (ColumnViewColumn)builder.GetObject("votes_column")!;
+        var popColumn = (ColumnViewColumn)builder.GetObject("popularity_column")!;
+        var versionColumn = (ColumnViewColumn)builder.GetObject("version_column")!;
+        var installButton = (Button)builder.GetObject("install_button")!;
+
+        _listStore = Gio.ListStore.New(AurPackageGObject.GetGType());
+        _selectionModel = SingleSelection.New(_listStore);
+        _selectionModel.CanUnselect = true;
+        _columnView.SetModel(_selectionModel);
+        
+        SetupColumns(checkColumn, nameColumn, votesColumn, popColumn, versionColumn);
+        
+        ColumnViewHelper.AlignColumnHeader(_columnView, 1, Align.End);
+        ColumnViewHelper.AlignColumnHeader(_columnView, 2, Align.End);
+        ColumnViewHelper.AlignColumnHeader(_columnView, 3, Align.End);
+
+        _columnView.OnActivate += (_, _) =>
+        {
+            var item = _selectionModel.GetSelectedItem();
+            if (item is AurPackageGObject pkgObj)
+            {
+                pkgObj.ToggleSelection();
+            }
+        };
+        installButton.OnClicked += (_, _) => { _ = InstallSelectedAsync(); };
+        _searchEntry.OnActivate += (_, _) => { _ = SearchAsync(_cts.Token); };
+
+        return _box;
+    }
+
+    private void SetupColumns(ColumnViewColumn checkColumn, ColumnViewColumn nameColumn,
+        ColumnViewColumn votesColumn, ColumnViewColumn popColumn, ColumnViewColumn versionColumn)
+    {
+        var checkFactory = _checkFactory = SignalListItemFactory.New();
+        checkFactory.OnSetup += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            var check = new CheckButton { MarginStart = 10, MarginEnd = 10 };
+            listItem.SetChild(check);
+            
+            check.OnToggled += (s, _) =>
+            {
+                if (listItem.GetItem() is AurPackageGObject pkgObj)
+                {
+                    pkgObj.IsSelected = s.GetActive();
+                }
+            };
+        };
+
+        checkFactory.OnBind += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            if (listItem.GetItem() is not AurPackageGObject pkgObj ||
+                listItem.GetChild() is not CheckButton checkButton) return;
+
+            checkButton.SetActive(pkgObj.IsSelected);
+
+            pkgObj.OnSelectionToggled += OnExternalToggle;
+            return;
+
+            void OnExternalToggle(object? s, EventArgs e)
+            {
+                if (listItem.GetItem() == pkgObj)
+                {
+                    checkButton.SetActive(pkgObj.IsSelected);
+                }
+            }
+        };
+
+        checkColumn.SetFactory(checkFactory);
+        
+        var nameFactory = _nameFactory = SignalListItemFactory.New();
+        nameFactory.OnSetup += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
+        };
+        nameFactory.OnBind += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            if (listItem.GetItem() is not AurPackageGObject { Package: { } pkg } ||
+                listItem.GetChild() is not Label label) return;
+            label.SetText(pkg.Name);
+            label.Halign = Align.Start;
+        };
+        nameColumn.SetFactory(nameFactory);
+        
+        var votesFactory = _votesFactory = SignalListItemFactory.New();
+        votesFactory.OnSetup += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
+        };
+        votesFactory.OnBind += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            if (listItem.GetItem() is not AurPackageGObject { Package: { } pkg } ||
+                listItem.GetChild() is not Label label) return;
+            label.SetText(pkg.NumVotes.ToString(CultureInfo.InvariantCulture));
+            label.Halign = Align.End;
+        };
+        votesColumn.SetFactory(votesFactory);
+        
+        var sizeFactory = _popFactory = SignalListItemFactory.New();
+        sizeFactory.OnSetup += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
+        };
+        sizeFactory.OnBind += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            if (listItem.GetItem() is not AurPackageGObject { Package: { } pkg } ||
+                listItem.GetChild() is not Label label) return;
+            label.SetText(pkg.Popularity.ToString("F2",CultureInfo.InvariantCulture));
+            label.Halign = Align.End;
+        };
+        popColumn.SetFactory(sizeFactory);
+        
+        var versionFactory = _versionFactory = SignalListItemFactory.New();
+        versionFactory.OnSetup += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            var label = Label.New(string.Empty);
+            listItem.SetChild(label);
+        };
+        versionFactory.OnBind += (_, args) =>
+        {
+            var listItem = (ListItem)args.Object;
+            if (listItem.GetItem() is not AurPackageGObject { Package: { } pkg } ||
+                listItem.GetChild() is not Label label) return;
+            label.SetText(pkg.Version);
+            label.Halign = Align.End;
+        };
+        versionColumn.SetFactory(versionFactory);
+    }
+
+    private async Task SearchAsync(CancellationToken ct)
+    {
+        _searchText = _searchEntry.GetText();
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var result = await privilegedOperationService.SearchAurPackagesAsync(_searchText);
+            ct.ThrowIfCancellationRequested();
+
+            Console.WriteLine($"[DEBUG_LOG] Search result: {result.Count}");
+
+            result = result.OrderByDescending(x => x.NumVotes).ToList();
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                _listStore.RemoveAll();
+                foreach (var gobject in result.Select(dto => new AurPackageGObject
+                         {
+                             Package = dto,
+                             IsSelected = false
+                         }))
+                {
+                    _listStore.Append(gobject);
+                }
+                return false;
+            });
+            
+            
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+
+        // Disconnect the model from the view to break circular refs
+        _columnView.SetModel(null);
+
+        // Dispose all GObject items BEFORE removing them
+        for (uint i = 0; i < _listStore.GetNItems(); i++)
+        {
+            if (_listStore.GetObject(i) is AurPackageGObject pkgObj)
+            {
+                pkgObj.Package = null;
+                pkgObj.Dispose();
+            }
+        }
+
+        _listStore.RemoveAll();
+
+        _selectionModel.Dispose();
+        _listStore.Dispose();
+
+        _checkFactory.Dispose();
+        _nameFactory.Dispose();
+        _votesFactory.Dispose();
+        _popFactory.Dispose();
+        _versionFactory.Dispose();
+
+        _columnView = null!;
+        _box = null!;
+        _selectionModel = null!;
+        _listStore = null!;
+        _searchEntry = null!;
+
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+    }
+
+    private async Task InstallSelectedAsync()
+    {
+        var selectedPackages = new List<string>();
+        for (uint i = 0; i < _listStore.GetNItems(); i++)
+        {
+            var item = _listStore.GetObject(i);
+            if (item is AurPackageGObject { IsSelected: true, Package: not null } pkgObj)
+            {
+                selectedPackages.Add(pkgObj.Package.Name);
+            }
+        }
+        
+        if (selectedPackages.Count != 0)
+        {
+            try
+            {
+                if (!configService.LoadConfig().NoConfirm)
+                {
+                    var args = new GenericQuestionEventArgs(
+                        "Install Packages?", string.Join("\n", selectedPackages)
+                    );
+
+                    genericQuestionService.RaiseQuestion(args);
+                    if (!await args.ResponseTask)
+                    {
+                        return;
+                    }
+                }
+                
+                lockoutService.Show($"Installing...");
+                
+                var packageBuilds = await privilegedOperationService.GetAurPackageBuild(selectedPackages);
+
+                if (packageBuilds.Count == 0)
+                {
+                    Console.WriteLine("No packages found.");
+                    return;
+                }
+
+                foreach (var pkgbuild in packageBuilds)
+                {
+                    if (pkgbuild.PkgBuild == null) continue;
+                    
+                    var buildArgs = new PackageBuildEventArgs($"Displaying Package Build {pkgbuild.Name}", pkgbuild.PkgBuild);
+                    genericQuestionService.RaisePackageBuild(buildArgs);
+                    
+                    if (!await buildArgs.ResponseTask)
+                    {
+                        return;
+                    }
+                }
+                
+                var result = await privilegedOperationService.InstallAurPackagesAsync(selectedPackages);
+                if (!result.Success)
+                {
+                    Console.WriteLine($"Failed to install packages: {result.Error}");
+                }
+            }
+            finally
+            {
+                lockoutService.Hide();
+            }
+        }
+    }
+}

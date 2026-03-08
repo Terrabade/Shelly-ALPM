@@ -31,18 +31,18 @@ echo "Script directory: $SCRIPT_DIR"
 echo "Install directory: $INSTALL_DIR"
 echo ""
 
-# Build Shelly-UI
-echo "Building Shelly-UI..."
+# Build Shelly-Notifications
+echo "Building Shelly-Notifications..."
 cd "$SCRIPT_DIR/Shelly-Notifications"
 dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly-Notifications" -p:InstructionSet=x86-64-v3
-echo "Shelly-UI build complete."
+echo "Shelly-Notifications build complete."
 echo ""
 
-# Build Shelly-UI
-echo "Building Shelly-UI..."
-cd "$SCRIPT_DIR/Shelly-UI"
-dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly-UI" -p:InstructionSet=x86-64-v3
-echo "Shelly-UI build complete."
+# Build Shelly.Gtk
+echo "Building Shelly.Gtk..."
+cd "$SCRIPT_DIR/Shelly.Gtk"
+dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly.Gtk" -p:InstructionSet=x86-64-v3
+echo "Shelly.Gtk build complete."
 echo ""
 
 # Build Shelly-CLI
@@ -57,12 +57,12 @@ echo "Creating installation directory: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
 # Copy Shelly-Notifications files
-echo "Copying Shelly-UI files to $INSTALL_DIR"
+echo "Copying Shelly-Notifications files to $INSTALL_DIR"
 cp -r "$SCRIPT_DIR/publish/Shelly-Notifications/"* "$INSTALL_DIR/"
 
-# Copy Shelly-UI files
-echo "Copying Shelly-UI files to $INSTALL_DIR"
-cp -r "$SCRIPT_DIR/publish/Shelly-UI/"* "$INSTALL_DIR/"
+# Copy Shelly.Gtk files
+echo "Copying Shelly.Gtk files to $INSTALL_DIR"
+cp -r "$SCRIPT_DIR/publish/Shelly.Gtk/"* "$INSTALL_DIR/"
 
 # Copy Shelly-CLI binary (output is named 'shelly' due to AssemblyName)
 echo "Copying Shelly-CLI binary to $INSTALL_DIR"
@@ -70,7 +70,7 @@ cp "$SCRIPT_DIR/publish/Shelly-CLI/shelly" "$INSTALL_DIR/shelly"
 
 # Copy the logo
 echo "Copying logo..."
-cp "$SCRIPT_DIR/Shelly-UI/Assets/shellylogo.png" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/Shelly.Gtk/Assets/shellylogo.png" "$INSTALL_DIR/"
 
 
 # Install icon to standard location
@@ -113,7 +113,7 @@ echo "Installation complete!"
 echo "=========================================="
 echo ""
 echo "You can now:"
-echo "  - Run the GUI: shelly-ui (or $INSTALL_DIR/Shelly-UI)"
+echo "  - Run the GUI: shelly-ui (or $INSTALL_DIR/Shelly.Gtk)"
 echo "  - Run the CLI: shelly (or $INSTALL_DIR/shelly)"
 echo "  - Notification Service added: or $INSTALL_DIR/Shelly-Notifications"
 echo "  - Find Shelly in your application menu"

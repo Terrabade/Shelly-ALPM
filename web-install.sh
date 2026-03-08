@@ -42,9 +42,9 @@ fi
 
 echo "Installing binaries to /usr/bin..."
 
-# Install Shelly-UI binary
-if [ -f "$EXTRACT_DIR/Shelly-UI" ]; then
-    install -Dm755 "$EXTRACT_DIR/Shelly-UI" /usr/bin/shelly-ui
+# Install Shelly.Gtk binary
+if [ -f "$EXTRACT_DIR/Shelly.Gtk" ]; then
+    install -Dm755 "$EXTRACT_DIR/Shelly.Gtk" /usr/bin/shelly-ui
 fi
 
 # Install native libraries alongside binaries (same as PKGBUILD)

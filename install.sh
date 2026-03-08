@@ -23,9 +23,9 @@ echo "Script directory: $SCRIPT_DIR"
 echo "Install directory: $INSTALL_DIR"
 echo ""
 
-# Install Shelly-UI binary
-echo "Installing Shelly-UI to $INSTALL_DIR"
-install -Dm755 "$SCRIPT_DIR/Shelly-UI" "$INSTALL_DIR/shelly-ui"
+# Install Shelly.Gtk binary
+echo "Installing Shelly.Gtk to $INSTALL_DIR"
+install -Dm755 "$SCRIPT_DIR/Shelly.Gtk" "$INSTALL_DIR/shelly-ui"
 
 # Install Shelly-Notifications binary
 echo "Installing Shelly-Notifications to $INSTALL_DIR"

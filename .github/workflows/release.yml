@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang zlib1g-dev libalpm-dev libx11-dev libice-dev libsm-dev libfontconfig1-dev libfreetype6-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxtst-dev libgl1-mesa-dev libgles2-mesa-dev libgtk-3-dev zip
+        sudo apt-get install -y clang zlib1g-dev libalpm-dev libgtk-4-dev zip
 
     - name: Publish Shelly-CLI
       run: |
@@ -32,10 +32,10 @@ jobs:
         tar -czf ../Shelly-CLI-linux-x64.tar.gz .
         cd ../..
 
-    - name: Publish Shelly-UI
+    - name: Publish Shelly.Gtk
       run: |
-        dotnet publish Shelly-UI/Shelly-UI.csproj -c Release -o publish/shelly-ui -p:InstructionSet=x86-64-v3
-        cp Shelly-UI/Assets/shellylogo.png publish/shelly-ui/
+        dotnet publish Shelly.Gtk/Shelly.Gtk.csproj -c Release -o publish/shelly-ui -p:InstructionSet=x86-64-v3
+        cp Shelly.Gtk/Assets/shellylogo.png publish/shelly-ui/
         cp install.sh publish/shelly-ui/
         # Also bundle the CLI binary for convenience
         cp publish/shelly-cli/shelly publish/shelly-ui/

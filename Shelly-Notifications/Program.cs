@@ -29,7 +29,6 @@ try
         {
         }
     }));
-    await connection.RequestNameAsync(ShellyConstants.Service, 0);
 
     var cts = new CancellationTokenSource();
     var token = cts.Token;
