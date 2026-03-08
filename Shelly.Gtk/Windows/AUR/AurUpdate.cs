@@ -1,11 +1,12 @@
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.AUR.GObjects;
 
 namespace Shelly.Gtk.Windows.AUR;
 
-public class AurUpdate(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService) : IShellyWindow
+public class AurUpdate(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
 {
      private Box _box = null!;
     private readonly CancellationTokenSource _cts = new();
@@ -193,10 +194,23 @@ public class AurUpdate(IPrivilegedOperationService privilegedOperationService, I
 
         if (selectedPackages.Count != 0)
         {
+            if (!configService.LoadConfig().NoConfirm)
+            {
+                var args = new GenericQuestionEventArgs(
+                    "Update Packages?", string.Join("\n", selectedPackages)
+                );
+
+                genericQuestionService.RaiseQuestion(args);
+                if (!await args.ResponseTask)
+                {
+                    return;
+                }
+            }
+            
             try
             {
                 lockoutService.Show($"Installing...");
-
+                
                 try
                 {
                     //do work

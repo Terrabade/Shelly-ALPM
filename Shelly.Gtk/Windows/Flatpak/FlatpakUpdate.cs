@@ -1,11 +1,12 @@
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 
 namespace Shelly.Gtk.Windows.Flatpak;
 
-public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationService, ILockoutService lockoutService) : IShellyWindow
+public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationService, ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
 {
     private ListView? _listView;
     private readonly CancellationTokenSource _cts = new();
@@ -154,6 +155,19 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
     
     private async Task UpdateAllCommand()
     {
+        if (!configService.LoadConfig().NoConfirm)
+        {
+            var args = new GenericQuestionEventArgs(
+                "Update Packages?", string.Join("\n", _allPackages.Select(x => x.Id))
+            );
+
+            genericQuestionService.RaiseQuestion(args);
+            if (!await args.ResponseTask)
+            {
+                return;
+            }
+        }
+        
         try
         {
             lockoutService.Show("Updating Flatpak packages...", 0, true);

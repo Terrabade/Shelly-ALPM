@@ -1,11 +1,12 @@
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
 
 namespace Shelly.Gtk.Windows.Packages;
 
-public class PackageUpdate(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService) : IShellyWindow
+public class PackageUpdate(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
 {
     private Box _box = null!;
     private ColumnView _columnView = null!;
@@ -214,6 +215,19 @@ public class PackageUpdate(IPrivilegedOperationService privilegedOperationServic
 
         if (selectedPackages.Count != 0)
         {
+            if (!configService.LoadConfig().NoConfirm)
+            {
+                var args = new GenericQuestionEventArgs(
+                    "Update Packages?", string.Join("\n", selectedPackages)
+                );
+
+                genericQuestionService.RaiseQuestion(args);
+                if (!await args.ResponseTask)
+                {
+                    return;
+                }
+            }
+            
             var isFullUpgrade = selectedPackages.Count == _listStore.GetNItems();
             try
             {
@@ -227,12 +241,11 @@ public class PackageUpdate(IPrivilegedOperationService privilegedOperationServic
             }
             catch (Exception e)
             {
-                //this needs to log to a toast message
+                Console.WriteLine($"Failed to install packages: {e.Message}");
             }
             finally
             {
                 lockoutService.Hide();
-                //always exit globally busy in case of failure
             }
         }
     }

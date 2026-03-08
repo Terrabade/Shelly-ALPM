@@ -68,8 +68,9 @@ public class AlpmEventDialog
                 parentOverlay.RemoveOverlay(box);
             };
 
-            buttonBox.Append(noButton);
             buttonBox.Append(yesButton);
+            buttonBox.Append(noButton);
+          
         }
 
         box.Append(buttonBox);

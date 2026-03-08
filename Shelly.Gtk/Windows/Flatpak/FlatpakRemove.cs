@@ -1,11 +1,12 @@
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 
 namespace Shelly.Gtk.Windows.Flatpak;
 
-public class FlatpakRemove(IUnprivilegedOperationService unprivilegedOperationService, ILockoutService lockoutService) : IShellyWindow
+public class FlatpakRemove(IUnprivilegedOperationService unprivilegedOperationService, ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
 {
     private ListView? _listView;
     private readonly CancellationTokenSource _cts = new();
@@ -158,6 +159,20 @@ public class FlatpakRemove(IUnprivilegedOperationService unprivilegedOperationSe
         if (selectedItem is not StringObject stringObj) return;
         
         var packageId = stringObj.GetString();
+
+        if (!configService.LoadConfig().NoConfirm)
+        {
+            var args = new GenericQuestionEventArgs(
+                "Remove Package?", packageId
+            );
+
+            genericQuestionService.RaiseQuestion(args);
+            if (!await args.ResponseTask)
+            {
+                return;
+            }
+        }
+        
         try
         {
             lockoutService.Show($"Removing {packageId}...", 0, true);

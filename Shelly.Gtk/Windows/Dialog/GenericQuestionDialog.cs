@@ -23,7 +23,13 @@ public static class GenericQuestionDialog
 
         var messageLabel = Label.New(e.Message);
         messageLabel.SetWrap(true);
-        box.Append(messageLabel);
+
+        var scrolledWindow = new ScrolledWindow();
+        scrolledWindow.SetPolicy(PolicyType.Never, PolicyType.Automatic);
+        scrolledWindow.SetMaxContentHeight(300);
+        scrolledWindow.SetPropagateNaturalHeight(true);
+        scrolledWindow.SetChild(messageLabel);
+        box.Append(scrolledWindow);
 
         var buttonBox = Box.New(Orientation.Horizontal, 8);
         buttonBox.SetHalign(Align.End);
@@ -44,8 +50,8 @@ public static class GenericQuestionDialog
             parentOverlay.RemoveOverlay(box);
         };
 
-        buttonBox.Append(noButton);
         buttonBox.Append(yesButton);
+        buttonBox.Append(noButton);
         box.Append(buttonBox);
 
         parentOverlay.AddOverlay(box);

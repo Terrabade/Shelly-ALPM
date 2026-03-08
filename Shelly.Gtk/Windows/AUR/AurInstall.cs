@@ -2,13 +2,14 @@ using System.Globalization;
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.AUR.GObjects;
 
 namespace Shelly.Gtk.Windows.AUR;
 
 public class AurInstall(
     IPrivilegedOperationService privilegedOperationService,
-    ILockoutService lockoutService) : IShellyWindow
+    ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService) : IShellyWindow
 {
     private Box _box = null!;
     private readonly CancellationTokenSource _cts = new();
@@ -215,6 +216,19 @@ public class AurInstall(
         {
             try
             {
+                if (!configService.LoadConfig().NoConfirm)
+                {
+                    var args = new GenericQuestionEventArgs(
+                        "Install Packages?", string.Join("\n", selectedPackages)
+                    );
+
+                    genericQuestionService.RaiseQuestion(args);
+                    if (!await args.ResponseTask)
+                    {
+                        return;
+                    }
+                }
+                
                 lockoutService.Show($"Installing...");
                 
                 var packageBuilds = await privilegedOperationService.GetAurPackageBuild(selectedPackages);

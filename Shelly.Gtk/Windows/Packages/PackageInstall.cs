@@ -1,12 +1,13 @@
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
 
 namespace Shelly.Gtk.Windows.Packages;
 
-public class PackageInstall(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService)
+public class PackageInstall(IPrivilegedOperationService privilegedOperationService, ILockoutService lockoutService, IConfigService configService, IGenericQuestionService genericQuestionService)
     : IShellyWindow
 {
     private Overlay _overlay = null!;
@@ -299,6 +300,8 @@ public class PackageInstall(IPrivilegedOperationService privilegedOperationServi
 
     private async Task InstallSelectedAsync()
     {
+       
+        
         var selectedPackages = new List<string>();
         for (uint i = 0; i < _listStore.GetNItems(); i++)
         {
@@ -308,18 +311,31 @@ public class PackageInstall(IPrivilegedOperationService privilegedOperationServi
                 selectedPackages.Add(pkgObj.Package.Name);
             }
         }
-
+        
         if (selectedPackages.Count != 0)
         {
             try
             {
+                if (!configService.LoadConfig().NoConfirm)
+                {
+                    var args = new GenericQuestionEventArgs(
+                        "Install Packages?", string.Join("\n", selectedPackages)
+                    );
+
+                    genericQuestionService.RaiseQuestion(args);
+                    if (!await args.ResponseTask)
+                    {
+                        return;
+                    }
+                }
+                
                 lockoutService.Show($"Installing...");
                 await privilegedOperationService.InstallPackagesAsync(selectedPackages);
                 await LoadDataAsync();
             }
             catch (Exception e)
             {
-                //this needs to log to a toast message
+                Console.WriteLine($"Failed to install packages: {e.Message}");
             }
             finally
             {
