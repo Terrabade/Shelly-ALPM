@@ -34,21 +34,21 @@ echo ""
 # Build Shelly-Notifications
 echo "Building Shelly-Notifications..."
 cd "$SCRIPT_DIR/Shelly-Notifications"
-dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly-Notifications" -p:InstructionSet=x86-64-v3
+dotnet publish -c $BUILD_CONFIG -r linux-x64 -o "$SCRIPT_DIR/publish/Shelly-Notifications" -p:InstructionSet=x86-64
 echo "Shelly-Notifications build complete."
 echo ""
 
 # Build Shelly.Gtk
 echo "Building Shelly.Gtk..."
 cd "$SCRIPT_DIR/Shelly.Gtk"
-dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly.Gtk" -p:InstructionSet=x86-64-v3
+dotnet publish -c $BUILD_CONFIG -r linux-x64 true -o "$SCRIPT_DIR/publish/Shelly.Gtk" -p:InstructionSet=x86-64
 echo "Shelly.Gtk build complete."
 echo ""
 
 # Build Shelly-CLI
 echo "Building Shelly-CLI..."
 cd "$SCRIPT_DIR/Shelly-CLI"
-dotnet publish -c $BUILD_CONFIG -r linux-x64 --self-contained true -o "$SCRIPT_DIR/publish/Shelly-CLI" -p:InstructionSet=x86-64-v3
+dotnet publish -c $BUILD_CONFIG -r linux-x64 true -o "$SCRIPT_DIR/publish/Shelly-CLI" -p:InstructionSet=x86-64
 echo "Shelly-CLI build complete."
 echo ""
 
