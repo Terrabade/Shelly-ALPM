@@ -5,7 +5,11 @@
   <requires lib="gtk" version="4.0"/>
   <object class="GtkBox" id="MetaSearchWindow">
     <property name="orientation">vertical</property>
-    <property name="spacing">10</property>
+    <property name="margin-top">10</property>
+     <property name="margin-start">10</property>
+     <property name="margin-end">10</property>
+     <property name="margin-bottom">10</property>
+     <property name="spacing">5</property>
     <child>
       <object class="GtkBox">
         <property name="hexpand">true</property>
@@ -49,7 +53,6 @@
             </child>
             <child>
               <object class="GtkColumnViewColumn" id="check_column">
-                <property name="expand">True</property>
               </object>
             </child>
           </object>

@@ -131,7 +131,7 @@ public class MetaSearch(
 
         _repoFactory = SignalListItemFactory.New();
         _repoFactory.OnSetup += (_, args) =>
-            ((ListItem)args.Object).SetChild(new Label { Halign = Align.Start, MarginStart = 6 });
+            ((ListItem)args.Object).SetChild(new Label { Halign = Align.End, MarginStart = 6 });
         _repoFactory.OnBind += (_, args) =>
         {
             var listItem = (ListItem)args.Object;
@@ -142,7 +142,7 @@ public class MetaSearch(
 
         _versionFactory = SignalListItemFactory.New();
         _versionFactory.OnSetup += (_, args) =>
-            ((ListItem)args.Object).SetChild(new Label { Halign = Align.Start, MarginStart = 6 });
+            ((ListItem)args.Object).SetChild(new Label { Halign = Align.End, MarginStart = 6 });
         _versionFactory.OnBind += (_, args) =>
         {
             var listItem = (ListItem)args.Object;

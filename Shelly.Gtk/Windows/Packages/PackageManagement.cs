@@ -26,6 +26,8 @@ public class PackageManagement(
     private SignalListItemFactory _sizeFactory = null!;
     private SignalListItemFactory _versionFactory = null!;
     private SearchEntry _searchEntry = null!;
+    private CheckButton _cascadeDeleteCheck = null!;
+    private CheckButton _removeConfigsCheck = null!;
     private Button _refreshButton = null!;
     private Button _removeButton = null!;
 
@@ -35,6 +37,8 @@ public class PackageManagement(
         _box = (Box)builder.GetObject("PackageManagement")!;
         _columnView = (ColumnView)builder.GetObject("package_grid")!;
         _searchEntry = (SearchEntry)builder.GetObject("search_entry")!;
+        _cascadeDeleteCheck = (CheckButton)builder.GetObject("cascade_delete_check")!;
+        _removeConfigsCheck = (CheckButton)builder.GetObject("remove_configs_check")!;
 
         var checkColumn = (ColumnViewColumn)builder.GetObject("check_column")!;
         var nameColumn = (ColumnViewColumn)builder.GetObject("name_column")!;
@@ -247,7 +251,7 @@ public class PackageManagement(
             try
             {
                 lockoutService.Show($"Removing...");
-                await privilegedOperationService.RemovePackagesAsync(selectedPackages, false, false);
+                await privilegedOperationService.RemovePackagesAsync(selectedPackages, _cascadeDeleteCheck.Active, _removeConfigsCheck.Active);
                 await LoadDataAsync();
             }
             catch (Exception e)
@@ -288,6 +292,8 @@ public class PackageManagement(
         _checkBinding.Clear();
         _checkBinding = null!;
         _searchEntry.Dispose();
+        _cascadeDeleteCheck.Dispose();
+        _removeConfigsCheck.Dispose();
         _refreshButton.Dispose();
         _removeButton.Dispose();
 
