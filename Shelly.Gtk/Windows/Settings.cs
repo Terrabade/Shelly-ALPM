@@ -107,7 +107,13 @@ public class Settings(
         sw.Active = initialValue;
         sw.OnStateSet += (s, e) =>
         {
-            if (!e.State) return false;
+            if (!e.State)
+            {
+                updateAction(false);
+                SaveConfig();
+                return false;
+            }
+            
             _ = HandleFlatpakMissingAsync(sw, updateAction);
             return true;
         };
