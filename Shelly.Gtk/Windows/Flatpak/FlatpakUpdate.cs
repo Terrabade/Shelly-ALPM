@@ -3,6 +3,7 @@ using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
+// ReSharper disable CollectionNeverQueried.Local
 
 namespace Shelly.Gtk.Windows.Flatpak;
 
@@ -15,6 +16,7 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
     private List<FlatpakPackageDto> _allPackages = [];
     private string _searchText = string.Empty;
     private SignalListItemFactory? _factory;
+    private readonly List<StringObject> _stringObjectRefs = [];
 
     public Widget CreateWindow()
     {
@@ -110,43 +112,6 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
         idLabel.SetText(package.Id);
         versionLabel.SetText(package.Version);
     }
-
-    public void Dispose()
-    {
-        _cts.Cancel();
-        _cts.Dispose();
-
-        // Disconnect the model from the view to break circular refs
-        _listView?.SetModel(null);
-
-        // Dispose all GObject items BEFORE removing them
-        if (_listStore != null)
-        {
-            for (uint i = 0; i < _listStore.GetNItems(); i++)
-            {
-                _listStore.GetObject(i)?.Dispose();
-            }
-
-            _listStore.RemoveAll();
-        }
-
-        _selectionModel?.Dispose();
-        _listStore?.Dispose();
-
-        _allPackages = null!;
-
-        _factory?.Dispose();
-        _factory = null!;
-
-        _listView = null!;
-        _listStore = null!;
-        _selectionModel = null!;
-
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-    }
-
     private async Task LoadDataAsync(CancellationToken ct = default)
     {
         try
@@ -177,10 +142,13 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
                 p.Id.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
 
         _listStore.RemoveAll();
+        _stringObjectRefs.Clear();
 
         foreach (var package in filtered)
         {
-            _listStore.Append(StringObject.New(package.Id));
+            var strObj = StringObject.New(package.Id);
+            _stringObjectRefs.Add(strObj);
+            _listStore.Append(strObj);
         }
     }
     
@@ -215,5 +183,13 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
         {
             lockoutService.Hide();
         }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        _listStore?.RemoveAll();
+        _stringObjectRefs.Clear();
     }
 }

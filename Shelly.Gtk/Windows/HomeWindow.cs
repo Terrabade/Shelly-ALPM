@@ -7,12 +7,14 @@ using Shelly.Gtk.Services;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
+// ReSharper disable CollectionNeverQueried.Local
 
 namespace Shelly.Gtk.Windows;
 
 public class HomeWindow(
     IPrivilegedOperationService privilegedOperationService,
-    IUnprivilegedOperationService unprivilegedOperationService) : IShellyWindow
+    IUnprivilegedOperationService unprivilegedOperationService,
+    IConfigService configService) : IShellyWindow
 {
     private Box _box = null!;
     private readonly CancellationTokenSource _cts = new();
@@ -21,6 +23,7 @@ public class HomeWindow(
     private SignalListItemFactory? _factory;
     private ListView? _listView;
     private ListBox? _listBox;
+    private readonly List<AlpmPackageGObject> _packageGObjectRefs = [];
 
     public Widget CreateWindow()
     {
@@ -58,6 +61,24 @@ public class HomeWindow(
 
         var exportSyncButton = (Button)builder.GetObject("ExportSyncButton")!;
         exportSyncButton.OnClicked += (sender, args) => { _ = ExportSync(); };
+
+        var config = configService.LoadConfig();
+        var aurBox = (Box)builder.GetObject("AurBox")!;
+        var flatpakBox = (Box)builder.GetObject("FlatpakBox")!;
+        
+        aurBox.Visible = config.AurEnabled;
+        flatpakBox.Visible = config.FlatPackEnabled;
+
+        configService.ConfigSaved += (sender, updatedConfig) =>
+        {
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                aurBox.Visible = updatedConfig.AurEnabled;
+                flatpakBox.Visible = updatedConfig.FlatPackEnabled;
+                return false;
+            });
+        };
+
         return _box;
     }
             
@@ -259,8 +280,13 @@ public class HomeWindow(
     private void PopulateInstalledPackages(ListView listView, List<AlpmPackageDto> packages)
     {
         var store = Gio.ListStore.New(AlpmPackageGObject.GetGType());
+        _packageGObjectRefs.Clear();
         foreach (var pkg in packages)
-            store.Append(new AlpmPackageGObject() { Package = pkg });
+        {
+            var pkgObj = new AlpmPackageGObject() { Package = pkg };
+            _packageGObjectRefs.Add(pkgObj);
+            store.Append(pkgObj);
+        }
 
         var factory = SignalListItemFactory.New();
         _store = store;
@@ -433,48 +459,7 @@ public class HomeWindow(
     {
         _cts.Cancel();
         _cts.Dispose();
-
-        // Disconnect model from view
-        _listView?.SetModel(null);
-        _listView?.SetFactory(null);
-
-        // Dispose GObject items in store
-        if (_store != null)
-        {
-            for (var i = 0u; i < _store.GetNItems(); i++)
-            {
-                if (_store.GetObject(i) is AlpmPackageGObject item)
-                {
-                    item.Package = null;
-                    item.Dispose();
-                }
-            }
-
-            _store.RemoveAll();
-        }
-
-        // Clear listbox children
-        if (_listBox != null)
-        {
-            while (_listBox.GetFirstChild() is { } child)
-                _listBox.Remove(child);
-        }
-
-        // Dispose selection model, store, factory
-        _selectionModel?.Dispose();
-        _store?.Dispose();
-        _factory?.Dispose();
-
-        // Null out references
-        _selectionModel = null;
-        _store = null;
-        _factory = null;
-        _listView = null;
-        _listBox = null;
-
-        // Aggressive GC
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        _store?.RemoveAll();
+        _packageGObjectRefs.Clear();
     }
 }

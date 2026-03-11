@@ -6,18 +6,19 @@
   <object class="GtkOverlay" id="PackageWindow">
     <child>
       <object class="GtkBox">
-        <property name="orientation">vertical</property>
         <property name="hexpand">true</property>
+        <property name="orientation">vertical</property>
         <property name="vexpand">true</property>
         <child>
           <object class="GtkBox">
-            <property name="orientation">horizontal</property>
-            <property name="margin-bottom">10</property>
-             <property name="margin-top">10</property>
-             <property name="margin-start">10</property>
-             <property name="margin-end">10</property>
-            <property name="spacing">5</property>
             <property name="halign">baseline</property>
+            <property name="margin-bottom">10</property>
+            <property name="margin-end">10</property>
+            <property name="margin-start">10</property>
+            <property name="margin-top">10</property>
+            <property name="orientation">horizontal</property>
+            <property name="spacing">5</property>
+            <property name="valign">baseline-center</property>
             <child>
               <object class="GtkButton" id="install_button">
                 <property name="halign">start</property>
@@ -27,6 +28,11 @@
                 </style>
               </object>
             </child>
+          <child>
+            <object class="GtkDropDown" id="grouping_selection">
+              <property name="tooltip-text">Group Filter</property>
+            </object>
+          </child>
             <child>
               <object class="GtkButton" id="install_local_button">
                 <property name="tooltip-text">Install Local Packages</property>
@@ -87,43 +93,86 @@
           </object>
         </child>
         <child>
-          <object class="GtkScrolledWindow">
-            <property name="overlay-scrolling">false</property>
+          <object class="GtkBox" id="detail_hbox">
             <property name="hexpand">true</property>
+            <property name="orientation">horizontal</property>
             <property name="vexpand">true</property>
             <child>
-              <object class="GtkColumnView" id="package_column_view">
+              <object class="GtkScrolledWindow">
                 <property name="hexpand">true</property>
-                <property name="show-column-separators">false</property>
-                <property name="show-row-separators">false</property>
+                <property name="overlay-scrolling">false</property>
                 <property name="vexpand">true</property>
                 <child>
-                  <object class="GtkColumnViewColumn" id="name_column">
-                    <property name="expand">true</property>
-                    <property name="title">Name</property>
+                  <object class="GtkColumnView" id="package_column_view">
+                    <property name="hexpand">true</property>
+                    <property name="show-column-separators">false</property>
+                    <property name="show-row-separators">false</property>
+                    <property name="vexpand">true</property>
+                    <child>
+                      <object class="GtkColumnViewColumn" id="name_column">
+                        <property name="expand">true</property>
+                        <property name="title">Name</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkColumnViewColumn" id="version_column">
+                        <property name="expand">true</property>
+                        <property name="title">Version</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkColumnViewColumn" id="size_column">
+                        <property name="expand">true</property>
+                        <property name="title">Size</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkColumnViewColumn" id="repository_column">
+                        <property name="expand">true</property>
+                        <property name="title">Repository</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkColumnViewColumn" id="check_column">
+                        <property name="title"/>
+                      </object>
+                    </child>
                   </object>
                 </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="detail_revealer">
+                <property name="reveal-child">false</property>
+                <property name="transition-type">slide-left</property>
                 <child>
-                  <object class="GtkColumnViewColumn" id="version_column">
-                    <property name="expand">true</property>
-                    <property name="title">Version</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkColumnViewColumn" id="size_column">
-                    <property name="expand">true</property>
-                    <property name="title">Size</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkColumnViewColumn" id="repository_column">
-                    <property name="expand">true</property>
-                    <property name="title">Repository</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkColumnViewColumn" id="check_column">
-                    <property name="title"/>
+                  <object class="GtkFrame">
+                    <property name="margin-bottom">0</property>
+                    <property name="margin-end">0</property>
+                    <property name="margin-start">0</property>
+                    <property name="margin-top">0</property>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="hscrollbar-policy">never</property>
+                        <property name="overlay-scrolling">false</property>
+                        <property name="propagate-natural-height">True</property>
+                            <property name="propagate-natural-height">True</property>
+                            <property name="propagate-natural-width">True</property>
+                        <property name="vexpand">true</property>
+                        <property name="width-request">250</property>
+                        <property name="window-placement">top-right</property>
+                        <child>
+                          <object class="GtkBox" id="detail_box">
+                            <property name="margin-bottom">4</property>
+                            <property name="margin-end">8</property>
+                            <property name="margin-start">8</property>
+                            <property name="margin-top">4</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">1</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -133,4 +182,5 @@
       </object>
     </child>
   </object>
+  <object class="GtkSingleSelection"/>
 </interface>

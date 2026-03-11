@@ -1,8 +1,10 @@
+using GObject;
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
+// ReSharper disable CollectionNeverQueried.Local
 
 namespace Shelly.Gtk.Windows.Packages;
 
@@ -20,7 +22,7 @@ public class PackageManagement(
     private FilterListModel _filterListModel = null!;
     private CustomFilter _filter = null!;
     private string _searchText = string.Empty;
-    private Dictionary<ListItem, EventHandler> _checkBinding = [];
+    private Dictionary<ColumnViewCell, (SignalHandler<CheckButton> OnToggled, EventHandler OnExternalToggle)> _checkBinding = [];
     private SignalListItemFactory _checkFactory = null!;
     private SignalListItemFactory _nameFactory = null!;
     private SignalListItemFactory _sizeFactory = null!;
@@ -30,6 +32,7 @@ public class PackageManagement(
     private CheckButton _removeConfigsCheck = null!;
     private Button _refreshButton = null!;
     private Button _removeButton = null!;
+    private readonly List<AlpmPackageGObject> _packageGObjectRefs = [];
 
     public Widget CreateWindow()
     {
@@ -86,30 +89,29 @@ public class PackageManagement(
         _checkFactory = SignalListItemFactory.New();
         _checkFactory.OnSetup += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             var check = new CheckButton { MarginStart = 10, MarginEnd = 10 };
             listItem.SetChild(check);
-
-            check.OnToggled += (s, _) =>
-            {
-                if (listItem.GetItem() is AlpmPackageGObject pkgObj)
-                {
-                    pkgObj.IsSelected = s.GetActive();
-                }
-            };
         };
 
         _checkFactory.OnBind += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmPackageGObject pkgObj ||
                 listItem.GetChild() is not CheckButton checkButton) return;
 
             checkButton.SetActive(pkgObj.IsSelected);
+            checkButton.OnToggled += OnToggled;
 
             pkgObj.OnSelectionToggled += OnExternalToggle;
-            _checkBinding[listItem] = OnExternalToggle;
+            _checkBinding[listItem] = (OnToggled, OnExternalToggle);
+
             return;
+
+            void OnToggled(CheckButton s, EventArgs e)
+            {
+                pkgObj.IsSelected = s.GetActive();
+            }
 
             void OnExternalToggle(object? s, EventArgs e)
             {
@@ -122,23 +124,26 @@ public class PackageManagement(
 
         _checkFactory.OnUnbind += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
-            if (listItem.GetItem() is not AlpmPackageGObject pkgObj) return;
-            if (_checkBinding.Remove(listItem, out var handler))
-                pkgObj.OnSelectionToggled -= handler;
+            if (args.Object is not ColumnViewCell listItem) return;
+            if (listItem.GetItem() is not AlpmPackageGObject pkgObj || listItem.GetChild() is not CheckButton checkButton) return;
+            if (_checkBinding.Remove(listItem, out var handlers))
+            {
+                pkgObj.OnSelectionToggled -= handlers.OnExternalToggle;
+                checkButton.OnToggled -= handlers.OnToggled;
+            }
         };
         checkColumn.SetFactory(_checkFactory);
 
         _nameFactory = SignalListItemFactory.New();
         _nameFactory.OnSetup += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             var label = Label.New(string.Empty);
             listItem.SetChild(label);
         };
         _nameFactory.OnBind += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmPackageGObject { Package: { } pkg } ||
                 listItem.GetChild() is not Label label) return;
             label.SetText(pkg.Name);
@@ -149,13 +154,13 @@ public class PackageManagement(
         _sizeFactory = SignalListItemFactory.New();
         _sizeFactory.OnSetup += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             var label = Label.New(string.Empty);
             listItem.SetChild(label);
         };
         _sizeFactory.OnBind += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmPackageGObject { Package: { } pkg } ||
                 listItem.GetChild() is not Label label) return;
             label.SetText(SizeHelpers.FormatSize(pkg.InstalledSize));
@@ -166,13 +171,13 @@ public class PackageManagement(
         _versionFactory = SignalListItemFactory.New();
         _versionFactory.OnSetup += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             var label = Label.New(string.Empty);
             listItem.SetChild(label);
         };
         _versionFactory.OnBind += (_, args) =>
         {
-            var listItem = (ListItem)args.Object;
+            if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmPackageGObject { Package: { } pkg } ||
                 listItem.GetChild() is not Label label) return;
             label.SetText(pkg.Version);
@@ -202,9 +207,12 @@ public class PackageManagement(
             GLib.Functions.IdleAdd(0, () =>
             {
                 _listStore.RemoveAll();
+                _packageGObjectRefs.Clear();
                 foreach (var package in packages)
                 {
-                    _listStore.Append(new AlpmPackageGObject { Package = package });
+                    var pkgObj = new AlpmPackageGObject { Package = package };
+                    _packageGObjectRefs.Add(pkgObj);
+                    _listStore.Append(pkgObj);
                 }
 
                 return false;
@@ -269,43 +277,8 @@ public class PackageManagement(
     {
         _cts.Cancel();
         _cts.Dispose();
-
-        _columnView.Dispose();
-        _columnView.SetModel(null);
-
-        for (uint i = 0; i < _listStore.GetNItems(); i++)
-        {
-            if (_listStore.GetObject(i) is not AlpmPackageGObject pkgObj) continue;
-            pkgObj.Package = null;
-            pkgObj.Dispose();
-        }
-
         _listStore.RemoveAll();
-
-        _searchText = string.Empty;
-
-        _selectionModel.Dispose();
-        _filterListModel.Dispose();
-        _filter.Dispose();
-        _listStore.Dispose();
-
+        _packageGObjectRefs.Clear();
         _checkBinding.Clear();
-        _checkBinding = null!;
-        _searchEntry.Dispose();
-        _cascadeDeleteCheck.Dispose();
-        _removeConfigsCheck.Dispose();
-        _refreshButton.Dispose();
-        _removeButton.Dispose();
-
-        _box.Dispose();
-
-        _checkFactory.Dispose();
-        _nameFactory.Dispose();
-        _sizeFactory.Dispose();
-        _versionFactory.Dispose();
-
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
     }
 }
