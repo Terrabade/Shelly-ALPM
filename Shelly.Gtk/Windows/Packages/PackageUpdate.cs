@@ -290,6 +290,11 @@ public class PackageUpdate(IPrivilegedOperationService privilegedOperationServic
             finally
             {
                 lockoutService.Hide();
+                
+                var args = new ToastMessageEventArgs(
+                    $"Updated {selectedPackages.Count} Package(s)"
+                );
+                genericQuestionService.RaiseToastMessage(args);
             }
         }
     }

@@ -182,6 +182,12 @@ public class FlatpakUpdate(IUnprivilegedOperationService unprivilegedOperationSe
         finally
         {
             lockoutService.Hide();
+            
+            var args = new ToastMessageEventArgs(
+                $"Updated all Flatpak(s)"
+            );
+
+            genericQuestionService.RaiseToastMessage(args);
         }
     }
 

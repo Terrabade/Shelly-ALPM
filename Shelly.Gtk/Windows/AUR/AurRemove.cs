@@ -242,6 +242,11 @@ public class AurRemove(IPrivilegedOperationService privilegedOperationService, I
                 finally
                 {
                     lockoutService.Hide();
+                    
+                    var args = new ToastMessageEventArgs(
+                        $"Updated {selectedPackages.Count} Package(s)"
+                    );
+                    genericQuestionService.RaiseToastMessage(args);
                 }
             }
             catch (Exception e)

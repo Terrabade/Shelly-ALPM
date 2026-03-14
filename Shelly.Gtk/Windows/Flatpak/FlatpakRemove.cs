@@ -189,6 +189,10 @@ public class FlatpakRemove(IUnprivilegedOperationService unprivilegedOperationSe
         finally
         {
             lockoutService.Hide();
+            var args = new ToastMessageEventArgs(
+                $"Removed Package(s)"
+            );
+            genericQuestionService.RaiseToastMessage(args);
         }
     }
 

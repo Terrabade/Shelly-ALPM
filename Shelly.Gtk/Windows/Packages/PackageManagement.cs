@@ -269,6 +269,12 @@ public class PackageManagement(
             finally
             {
                 lockoutService.Hide();
+                
+                var args = new ToastMessageEventArgs(
+                    $"Removed {selectedPackages.Count} Package(s)"
+                );
+
+                genericQuestionService.RaiseToastMessage(args);
             }
         }
     }

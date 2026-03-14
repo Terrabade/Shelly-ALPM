@@ -36,5 +36,9 @@ public class ShellyConfig
     public int TrayCheckIntervalHours { get; set; } = 12;
 
     public bool NoConfirm { get; set; } = false;
+    
+    public bool NewInstall { get; set; } = true;
+    
+    public Version CurrentVersion { get; set; } = new Version(0,0,0);
 
 }

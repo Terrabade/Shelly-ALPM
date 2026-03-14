@@ -13,6 +13,7 @@ public class MetaSearch(
     IPrivilegedOperationService privilegedOperationService,
     IUnprivilegedOperationService unprivilegedOperationService,
     IConfigService configService,
+    IGenericQuestionService genericQuestionService,
     ILockoutService lockoutService) : IShellyWindow
 {
     private Box _box = null!;
@@ -303,6 +304,11 @@ public class MetaSearch(
         finally
         {
             lockoutService.Hide();
+                
+            var args = new ToastMessageEventArgs(
+                $"Updated {selected.Count} Package(s)"
+            );
+            genericQuestionService.RaiseToastMessage(args);
         }
     }
 

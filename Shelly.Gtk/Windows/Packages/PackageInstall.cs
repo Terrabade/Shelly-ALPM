@@ -411,7 +411,7 @@ public class PackageInstall(
             {
                 return false;
             }
-            
+
             if (string.IsNullOrWhiteSpace(_searchText))
                 return true;
 
@@ -462,6 +462,11 @@ public class PackageInstall(
             finally
             {
                 lockoutService.Hide();
+                var args = new ToastMessageEventArgs(
+                    $"Installed {selectedPackages.Count} Package(s)"
+                );
+
+                genericQuestionService.RaiseToastMessage(args);
             }
         }
     }
@@ -502,6 +507,11 @@ public class PackageInstall(
         finally
         {
             lockoutService.Hide();
+
+            var args = new ToastMessageEventArgs(
+                $"Installed local package"
+            );
+            genericQuestionService.RaiseToastMessage(args);
         }
     }
 
@@ -529,6 +539,14 @@ public class PackageInstall(
                 if (!result.Success)
                 {
                     Console.WriteLine($"Failed to install local package: {result.Error}");
+                }
+                else
+                {
+                    var args = new ToastMessageEventArgs(
+                        $"App Image installed"
+                    );
+
+                    genericQuestionService.RaiseToastMessage(args);
                 }
             }
         }
