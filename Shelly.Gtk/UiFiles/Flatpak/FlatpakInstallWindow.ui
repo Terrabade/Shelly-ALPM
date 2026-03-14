@@ -36,7 +36,6 @@
                                 <child>
                                     <object class="GtkBox">
                                         <property name="orientation">horizontal</property>
-                                        <property name="margin-top">8</property>
                                         <property name="margin-bottom">8</property>
                                         <property name="margin-start">8</property>
                                         <property name="margin-end">8</property>
@@ -130,21 +129,21 @@
                                                                 <property name="halign">end</property>
                                                                 <child>
                                                                     <object class="GtkLabel" id="overlay_version_label">
-                                                                        <property name="label">Version: —</property>
+                                                                        <property name="label">Version: -</property>
                                                                         <property name="halign">end</property>
                                                                         <property name="xalign">1</property>
                                                                     </object>
                                                                 </child>
                                                                 <child>
                                                                     <object class="GtkLabel" id="overlay_size_label">
-                                                                        <property name="label">Size: —</property>
+                                                                        <property name="label">Size: -</property>
                                                                         <property name="halign">end</property>
                                                                         <property name="xalign">1</property>
                                                                     </object>
                                                                 </child>
                                                                 <child>
                                                                     <object class="GtkLabel" id="overlay_license_label">
-                                                                        <property name="label">License: —</property>
+                                                                        <property name="label">License: -</property>
                                                                         <property name="halign">end</property>
                                                                         <property name="xalign">1</property>
                                                                     </object>

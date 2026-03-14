@@ -17,7 +17,7 @@ public class FlatpakInstallCommand : Command<FlatpakPackageSettings>
 
         AnsiConsole.MarkupLine("[yellow]Installing flatpak app...[/]");
         var manager = new FlatpakManager();
-        var result = manager.InstallApp(settings.Packages, settings.Remote, settings.IsUser);
+        var result = manager.InstallApp(settings.Packages, settings.Remote, settings.IsUser, settings.Branch ?? "stable");
 
         AnsiConsole.MarkupLine("[yellow]Installed: " + result.EscapeMarkup() + "[/]");
 

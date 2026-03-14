@@ -34,6 +34,20 @@ internal static partial class FlatpakReference
     public static partial IntPtr InstallationListRemoteRefsSync(IntPtr installation, string remoteName,
         IntPtr cancellable, out IntPtr error);
 
+    [LibraryImport(LibName, EntryPoint = "flatpak_installation_fetch_remote_ref_sync",
+        StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr InstallationFetchRemoteRefsSync(IntPtr installation, string remoteName, int kind, string name,
+        string arch, string branch, IntPtr cancellable,
+        out IntPtr error);
+        
+    [LibraryImport(LibName, EntryPoint = "flatpak_remote_ref_get_installed_size",
+        StringMarshalling = StringMarshalling.Utf8)]
+    public static partial ulong RemoteRefGetInstalledSize(IntPtr installation);
+    
+    [LibraryImport(LibName, EntryPoint = "flatpak_installation_new_system",
+        StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr FlatpakInstallationNewSystem(IntPtr cancellable, out IntPtr error);
+    
     [LibraryImport(LibName, EntryPoint = "flatpak_installation_list_unused_refs",
         StringMarshalling = StringMarshalling.Utf8)]
     public static partial IntPtr InstallationListUnusedRefs(IntPtr installation, string? arch,
@@ -43,8 +57,8 @@ internal static partial class FlatpakReference
         StringMarshalling = StringMarshalling.Utf8)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool InstallationPruneLocalRepo(IntPtr installation, IntPtr cancellable, out IntPtr error);
-
-
+    
+    
     #endregion
 
     #region Refs
@@ -102,7 +116,11 @@ internal static partial class FlatpakReference
 
     [LibraryImport(LibName, EntryPoint = "flatpak_ref_get_kind", StringMarshalling = StringMarshalling.Utf8)]
     public static partial int RefGetKind(IntPtr instance);
-
+    
+    
+    [LibraryImport(LibName, EntryPoint = "flatpak_remote_ref_get_installed_size", StringMarshalling = StringMarshalling.Utf8)]
+    public static partial int GetRemoteInstalledSize(IntPtr instance);
+    
     [LibraryImport(LibName, EntryPoint = "flatpak_installation_launch_full",
         StringMarshalling = StringMarshalling.Utf8)]
     [return: MarshalAs(UnmanagedType.Bool)]

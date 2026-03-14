@@ -189,7 +189,12 @@ public class UnprivilegedOperationService : IUnprivilegedOperationService
     {
         return await ExecuteUnprivilegedCommandAsync("Sync remote", "flatpak sync-remote-appstream");
     }
-
+    
+    public async Task<UnprivilegedOperationResult> GetFlatpakAppDataAsync(string remote, string app, string arch)
+    {
+        return await ExecuteUnprivilegedCommandAsync("Sync remote", "flatpak app-size", remote, app , arch);
+    }
+    
     public async Task<UnprivilegedOperationResult> ExportSyncFile(string filePath, string name)
     {
         if (string.IsNullOrWhiteSpace(name))

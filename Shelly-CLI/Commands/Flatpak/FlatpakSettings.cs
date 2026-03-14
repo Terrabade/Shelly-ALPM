@@ -84,6 +84,7 @@ public class FlatpakRemoveRemoteSettings : CommandSettings
 public class FlatpakListRemoteAppStreamSettings : CommandSettings
 {
     [CommandArgument(0, "<query>")]
+    [Description("Gets appstream data in json (use all to retreive all appstreams)")]
     public string AppStreamName { get; init; } = string.Empty;
 }
 

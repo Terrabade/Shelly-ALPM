@@ -1,5 +1,3 @@
-using Gtk;
-
 namespace Shelly.Gtk.UiModels;
 
 public class GenericQuestionEventArgs(string title, string message) : EventArgs

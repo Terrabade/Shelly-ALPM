@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using LiteDB;
 
 namespace Shelly.Gtk.UiModels;

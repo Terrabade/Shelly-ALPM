@@ -333,6 +333,8 @@ public class Program
                 flatpak.AddCommand<FlatpakRemoveRemote>("remove-remotes");
                 
                 flatpak.AddCommand<GetFromRemote>("get-from-remote").WithDescription("Get package(s) from remote");
+                
+                flatpak.AddCommand<GetAppInstallSize>("app-size");
             });
 
             config.AddBranch("utility", utility =>

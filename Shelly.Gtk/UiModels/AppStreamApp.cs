@@ -52,6 +52,9 @@ public class AppstreamApp
 
     [JsonPropertyName("verification_method")]
     public string VerificationMethod { get; set; } = string.Empty;
+    
+    [JsonPropertyName("remotes")]
+    public List<string> Remotes { get; set; } = [];
 }
 
 /// <summary>

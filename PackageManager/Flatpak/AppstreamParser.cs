@@ -17,7 +17,7 @@ public class AppstreamParser
     /// </summary>
     /// <param name="filePath">Path to the appstream file</param>
     /// <returns>List of parsed applications</returns>
-    public List<AppstreamApp> ParseFile(string filePath)
+    public List<AppstreamApp> ParseFile(string filePath, string remotes)
     {
         if (!File.Exists(filePath))
         {
@@ -36,7 +36,7 @@ public class AppstreamParser
 
         using (stream)
         {
-            return ParseStream(stream);
+            return ParseStream(stream, remotes);
         }
     }
 
@@ -45,7 +45,7 @@ public class AppstreamParser
     /// </summary>
     /// <param name="stream">Stream containing appstream XML data</param>
     /// <returns>List of parsed applications</returns>
-    private List<AppstreamApp> ParseStream(Stream stream)
+    private List<AppstreamApp> ParseStream(Stream stream, string remotes)
     {
         var apps = new List<AppstreamApp>();
         var doc = XDocument.Load(stream);
@@ -58,7 +58,7 @@ public class AppstreamParser
 
         foreach (var component in components)
         {
-            var app = ParseComponent(component);
+            var app = ParseComponent(component, remotes);
             if (app != null)
             {
                 apps.Add(app);
@@ -71,7 +71,7 @@ public class AppstreamParser
     /// <summary>
     /// Parses a single component element
     /// </summary>
-    private AppstreamApp? ParseComponent(XElement component)
+    private AppstreamApp? ParseComponent(XElement component, string remotes)
     {
         var type = component.Attribute("type")?.Value;
 
@@ -92,7 +92,8 @@ public class AppstreamParser
             ProjectLicense = component.Element("project_license")?.Value ?? string.Empty,
             DeveloperName = component.Element("developer_name")?.Value
                 ?? component.Element("developer")?.Element("name")?.Value
-                ?? string.Empty
+                ?? string.Empty,
+            Remotes = [ remotes ]
         };
 
         // Parse description

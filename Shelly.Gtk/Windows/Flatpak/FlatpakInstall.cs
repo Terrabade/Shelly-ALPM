@@ -27,7 +27,7 @@ public class FlatpakInstall(
     private SignalListItemFactory? _factory;
     private Box? _overlay;
     private Button _overlayCloseButton = null!;
-    private Button _overlayInstallButton= null!;
+    private Button _overlayInstallButton = null!;
     private Label _overlayAuthorLabel = null!;
     private Label _overlayNameLabel = null!;
     private Label _overlayVersionLabel = null!;
@@ -38,7 +38,7 @@ public class FlatpakInstall(
     private Label _overlayDescriptionLabel = null!;
     private Image _overlayIconImage = null!;
     private Box? _overlayScreenshotsBox = null!;
-    
+
     public Widget CreateWindow()
     {
         var builder = Builder.NewFromString(ResourceHelper.LoadUiFile("UiFiles/Flatpak/FlatpakInstallWindow.ui"), -1);
@@ -51,24 +51,84 @@ public class FlatpakInstall(
         _overlay = (Box)builder.GetObject("overlay_panel")!;
         _overlayScreenshotsBox = (Box)builder.GetObject("overlay_screenshots_box")!;
         _overlayAuthorLabel = (Label)builder.GetObject("overlay_author_label")!;
-        _overlayNameLabel  = (Label)builder.GetObject("overlay_name_label")!;
-        _overlayVersionLabel  = (Label)builder.GetObject("overlay_version_label")!;
-        _overlaySizeLabel  = (Label)builder.GetObject("overlay_size_label")!;
-        _overlayLicenseLabel  = (Label)builder.GetObject("overlay_license_label")!;
-        _overlayUrlLabel   = (Label)builder.GetObject("overlay_urls_label")!;
-        _overlaySummaryLabel  = (Label)builder.GetObject("overlay_summary_label")!;
+        _overlayNameLabel = (Label)builder.GetObject("overlay_name_label")!;
+        _overlayVersionLabel = (Label)builder.GetObject("overlay_version_label")!;
+        _overlaySizeLabel = (Label)builder.GetObject("overlay_size_label")!;
+        _overlayLicenseLabel = (Label)builder.GetObject("overlay_license_label")!;
+        _overlayUrlLabel = (Label)builder.GetObject("overlay_urls_label")!;
+        _overlaySummaryLabel = (Label)builder.GetObject("overlay_summary_label")!;
         _overlayDescriptionLabel = (Label)builder.GetObject("overlay_description_label")!;
-        
+
         _overlayCloseButton = (Button)builder.GetObject("overlay_back_button")!;
         _overlayInstallButton = (Button)builder.GetObject("overlay_install_button")!;
 
         var categories = Enum.GetNames<FlatpakCategories>();
         foreach (var category in categories)
         {
+            var gtkBox = new Box();
+            gtkBox.SetOrientation(Orientation.Horizontal);
+            gtkBox.Spacing = 8;
+
+            var image = new Image();
+            image.PixelSize = 16;
+            
+            
             var label = new Label();
             label.SetText(category);
+            
+            switch (category)
+            {
+                case "AllApplications":
+                    label.SetText("All Applications");
+                    image.IconName = "applications-other";
+                    gtkBox.Append(image);
+                    break;
+                case "AudioVideo":
+                    label.SetText("Audio & Video");
+                    image.IconName = "applications-multimedia";
+                    gtkBox.Append(image);
+                    break;
+                case "Development":
+                    image.IconName = "applications-development";
+                    gtkBox.Append(image);
+                    break;
+                case "Education":
+                    image.IconName = "applications-education";
+                    gtkBox.Append(image);
+                    break;
+                case "Game":
+                    image.IconName = "applications-games";
+                    gtkBox.Append(image);
+                    break;
+                case "Graphics":
+                    image.IconName = "applications-graphics";
+                    gtkBox.Append(image);
+                    break;
+                case "Network":
+                    image.IconName = "applications-internet";
+                    gtkBox.Append(image);
+                    break;
+                case "Office":
+                    image.IconName = "applications-office";
+                    gtkBox.Append(image);
+                    break;
+                case "Science":
+                    image.IconName = "applications-science";
+                    gtkBox.Append(image);
+                    break;
+                case "System":
+                    image.IconName = "applications-system";
+                    gtkBox.Append(image);
+                    break;
+                case "Utility":
+                    image.IconName = "applications-utilities";
+                    gtkBox.Append(image);
+                    break;
+            }
+         
             label.Halign = Align.Start;
-            _categoryListBox.Append(label);
+            gtkBox.Append(label);
+            _categoryListBox.Append(gtkBox);
         }
 
 
@@ -77,14 +137,14 @@ public class FlatpakInstall(
         _selectionModel = SingleSelection.New(_listStore);
         _listView.SetModel(_selectionModel);
         _listView.SingleClickActivate = true;
-        
+
         _factory = SignalListItemFactory.New();
         _factory.OnSetup += OnSetup;
         _factory.OnBind += OnBind;
         _listView.SetFactory(_factory);
 
         _listView.OnRealize += (_, _) => { _ = LoadDataAsync(_cts.Token); };
-      
+
         reloadButton.OnClicked += (_, _) => { _ = LoadDataAsync(); };
         searchEntry.OnSearchChanged += (_, _) =>
         {
@@ -97,6 +157,7 @@ public class FlatpakInstall(
             if (args.Row is null) return;
             _selectedCategory = (FlatpakCategories)args.Row.GetIndex();
             _overlay.SetVisible(false);
+            _overlay.Dispose();
             ApplyFilter();
         };
 
@@ -108,39 +169,47 @@ public class FlatpakInstall(
                 var obj = pkgObj.Package;
 
                 if (obj == null) return;
-                
-                _overlayCloseButton.OnClicked += (_, _) => _overlay.SetVisible(false);
+
+                _overlayCloseButton.OnClicked += (_, _) =>
+                {
+                    _overlay.SetVisible(false);
+                    _overlay.Dispose();
+                };
                 _overlayInstallButton.OnClicked += (_, _) => { _ = InstallSelectedAsync(); };
-                
+
                 _overlayIconImage = (Image)builder.GetObject("overlay_icon")!;
-                
+
                 _overlayAuthorLabel.SetText(obj.DeveloperName);
                 _overlayNameLabel.SetText(obj.Name);
                 _overlayVersionLabel.SetText(obj.Releases.First().Version);
-                
+
                 _overlayLicenseLabel.SetText(obj.ProjectLicense);
                 _overlaySummaryLabel.SetText(obj.Summary);
                 _overlayDescriptionLabel.SetText(obj.Description);
-                
+                var result = unprivilegedOperationService
+                    .GetFlatpakAppDataAsync(obj!.Remotes!.FirstOrDefault()!, obj.Id, "stable").Result;
+                _overlaySizeLabel.SetText(result.Output.TrimEnd());
+
                 SetUrlLinks(obj.Urls);
-                
-                _overlayIconImage.SetFromFile($"/var/lib/flatpak/appstream/flathub/x86_64/active/icons/64x64/{obj.Id}.png");
+
+                _overlayIconImage.SetFromFile(
+                    $"/var/lib/flatpak/appstream/{obj.Remotes.FirstOrDefault()}/x86_64/active/icons/64x64/{obj.Id}.png");
 
                 List<string> images = [];
-                
+
                 images.AddRange(obj.Screenshots
                     .Select(screenshot => screenshot.Images.FirstOrDefault()?.Url)
                     .Where(url => !string.IsNullOrEmpty(url))!);
 
                 PopulateScreenshots(images);
-                
+
                 _overlay.SetVisible(true);
             }
         };
 
         return box;
     }
-    
+
     private void SetUrlLinks(Dictionary<string, string>? urls)
     {
         if (urls == null || urls.Count == 0)
@@ -159,7 +228,7 @@ public class FlatpakInstall(
 
     private static string CapitalizeFirst(string s) =>
         string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s[1..];
-    
+
     private void PopulateScreenshots(List<string> imageUrls)
     {
         while (_overlayScreenshotsBox!.GetFirstChild() is { } child)
@@ -172,7 +241,7 @@ public class FlatpakInstall(
             picture.HeightRequest = 584;
             picture.WidthRequest = 900;
             picture.AddCssClass("card");
-            
+
             _ = Task.Run(async () =>
             {
                 try
@@ -199,11 +268,10 @@ public class FlatpakInstall(
                         picture.SetPaintable(texture);
                         return false;
                     });
-
                 }
                 catch
                 {
-                  // if we get an error keep going
+                    // if we get an error keep going
                 }
             });
 
@@ -260,8 +328,8 @@ public class FlatpakInstall(
         var idLabel = (Label)nameLabel.GetNextSibling()!;
         var versionLabel = (Label)vbox.GetNextSibling()!;
 
-        icon.SetFromFile($"/var/lib/flatpak/appstream/flathub/x86_64/active/icons/64x64/{package.Id}.png");
-        
+        icon.SetFromFile($"/var/lib/flatpak/appstream/{package.Remotes.FirstOrDefault()}/x86_64/active/icons/64x64/{package.Id}.png");
+
         nameLabel.SetText(package.Name);
         idLabel.SetText(package.Summary);
         versionLabel.SetText(package.Releases.First().Version);

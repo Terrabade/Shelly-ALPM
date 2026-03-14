@@ -30,6 +30,8 @@ public interface IUnprivilegedOperationService
     Task<UnprivilegedOperationResult> ExportSyncFile(string filePath, string name);
 
     Task<List<FlatpakPackageDto>> SearchFlathubAsync(string query);
+    
+    Task<UnprivilegedOperationResult>  GetFlatpakAppDataAsync(string remote, string app, string arch);
 }
 
 public class UnprivilegedOperationResult

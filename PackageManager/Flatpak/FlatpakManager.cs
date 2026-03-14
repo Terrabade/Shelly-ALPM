@@ -283,7 +283,7 @@ public class FlatpakManager : IDisposable
     /// <param name="remoteName">The remote name (e.g., "flathub"). If null, will try the first available remote.</param>
     /// <param name="isUser">Whether to install to user installation (true) or system installation (false)</param>
     /// <returns>A result message indicating success or failure</returns>
-    public string InstallApp(string appId, string? remoteName = null, bool isUser = false)
+    public string InstallApp(string appId, string? remoteName = null, bool isUser = false, string branch = "stable")
     {
         IntPtr installationPtr;
         IntPtr installationsPtr = IntPtr.Zero;
@@ -333,7 +333,7 @@ public class FlatpakManager : IDisposable
                 return "No remote repository configured. Add a remote like 'flathub' first.";
             }
 
-            var refString = $"app/{appId}/{GetCurrentArch()}/stable";
+            var refString = $"app/{appId}/{GetCurrentArch()}/{branch}";
 
             var transactionPtr = FlatpakReference.TransactionNewForInstallation(
                 installationPtr, IntPtr.Zero, out IntPtr transactionError);
@@ -560,6 +560,7 @@ public class FlatpakManager : IDisposable
             {
                 FlatpakReference.GErrorFree(error);
             }
+
             return " No unused dependencies found.";
         }
 
@@ -573,8 +574,8 @@ public class FlatpakManager : IDisposable
                 return " No unused dependencies found.";
             }
 
-        var transactionPtr = FlatpakReference.TransactionNewForInstallation(
-            installationPtr, IntPtr.Zero, out IntPtr transactionError);
+            var transactionPtr = FlatpakReference.TransactionNewForInstallation(
+                installationPtr, IntPtr.Zero, out IntPtr transactionError);
 
             if (transactionError != IntPtr.Zero || transactionPtr == IntPtr.Zero)
             {
@@ -582,6 +583,7 @@ public class FlatpakManager : IDisposable
                 {
                     FlatpakReference.GErrorFree(transactionError);
                 }
+
                 return " Failed to create transaction for removing unused dependencies.";
             }
 
@@ -633,6 +635,7 @@ public class FlatpakManager : IDisposable
                         {
                             FlatpakReference.GErrorFree(runError);
                         }
+
                         return $" Failed to remove {removedCount} unused dependencies.";
                     }
 
@@ -1598,7 +1601,7 @@ public class FlatpakManager : IDisposable
             }
 
             var parser = new AppstreamParser();
-            return parser.ParseFile(appstreamPath);
+            return parser.ParseFile(appstreamPath, remoteName);
         }
         catch (Exception e)
         {
@@ -1719,15 +1722,58 @@ public class FlatpakManager : IDisposable
         }
     }
 
+    public ulong GetRemoteSize(string remote, string name, string arch, string branch)
+    {
+        if (!NativeResolver.IsLibraryAvailable(FlatpakReference.LibName))
+        {
+            return 0;
+        }
+        
+        var installation = FlatpakReference.FlatpakInstallationNewSystem(IntPtr.Zero, out var error);
+        
+        var remoteRef = FlatpakReference.InstallationFetchRemoteRefsSync(installation, remote, 0, name, GetCurrentArch(), branch,IntPtr.Zero,out _);
+        
+        if (remoteRef == IntPtr.Zero) return 0;
+        var size = FlatpakReference.RemoteRefGetInstalledSize(remoteRef);
+        FlatpakReference.GObjectUnref(remoteRef);
+        return size;
+        
+        
+
+    }
+
     /// <summary>
     /// Gets all available apps from appstream and serializes to JSON (AOT-compatible)
     /// </summary>
     /// <param name="remoteName">The remote name (e.g., "flathub"). If null, uses the first remote.</param>
     /// <param name="arch">The architecture (e.g., "x86_64"). If null, uses current system architecture.</param>
     /// <returns>JSON string of available applications</returns>
-    public string GetAvailableAppsFromAppstreamJson(string? remoteName = null, string? arch = null)
+    public string GetAvailableAppsFromAppstreamJson(string remoteName, string? arch = null, bool getAll = false)
     {
-        var apps = GetAvailableAppsFromAppstream(remoteName, arch);
+        var apps = new List<AppstreamApp>();
+        if (getAll)
+        {
+            var remotes = ListRemotes();
+            foreach (var remote in remotes)
+            {
+                foreach (var app in GetAvailableAppsFromAppstream(remote, arch))
+                {
+                    var existing = apps.FirstOrDefault(a => a.Name == app.Name);
+                    if (existing != null)
+                        existing.Remotes.Add(remote);
+                    else
+                    {
+                        app.Remotes.Add(remote);
+                        apps.Add(app);
+                    }
+                }
+            }
+        }
+        else
+        {
+            apps = GetAvailableAppsFromAppstream(remoteName, arch);
+        }
+
         return JsonSerializer.Serialize(apps, AppstreamJsonContext.Default.ListAppstreamApp);
     }
 
