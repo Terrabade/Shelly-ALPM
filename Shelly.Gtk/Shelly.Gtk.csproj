@@ -33,7 +33,6 @@
     <ItemGroup>
         <PackageReference Include="GirCore.Gtk-4.0" Version="0.7.0"/>
         <PackageReference Include="GirCore.GObject-2.0.Integration" Version="0.7.0"/>
-        <PackageReference Include="LiteDB" Version="6.0.0-prerelease.75" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
         <PackageReference Include="Tmds.DBus.Protocol" Version="0.90.3" />
