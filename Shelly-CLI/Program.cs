@@ -112,6 +112,10 @@ public class Program
                 .WithDescription("List packages that need updates")
                 .WithExample("list-updates");
 
+            config.AddCommand<ListReposCommand>("list-repos")
+                .WithDescription("List configured repositories in order")
+                .WithExample("list-repos");
+
             config.AddCommand<PackageInformationCommand>("info")
                 .WithDescription("Display information about a package")
                 .WithExample("info", "firefox", "--installed")
