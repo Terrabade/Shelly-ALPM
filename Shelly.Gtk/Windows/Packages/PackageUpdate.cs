@@ -4,6 +4,7 @@ using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
 using Shelly.Gtk.UiModels;
+using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
 
 // ReSharper disable CollectionNeverQueried.Local
@@ -193,7 +194,7 @@ public class PackageUpdate(
             if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmUpdateGObject { Package: { } pkg } ||
                 listItem.GetChild() is not Label label) return;
-            label.SetText(pkg.NewVersion);
+            label.SetText(pkg.CurrentVersion);
             label.Halign = Align.End;
         };
         oldColumn.SetFactory(_oldVersionFactory);
@@ -210,7 +211,7 @@ public class PackageUpdate(
             if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmUpdateGObject { Package: { } pkg } ||
                 listItem.GetChild() is not Label label) return;
-            label.SetText(pkg.CurrentVersion);
+            label.SetText(pkg.NewVersion);
             label.Halign = Align.End;
         };
         versionColumn.SetFactory(_versionFactory);
@@ -260,12 +261,14 @@ public class PackageUpdate(
     private async Task UpdateSelectedAsync()
     {
         var selectedPackages = new List<string>();
+        var selectedPackageUpdates = new List<AlpmPackageUpdateDto>();
         for (uint i = 0; i < _listStore.GetNItems(); i++)
         {
             var item = _listStore.GetObject(i);
             if (item is AlpmUpdateGObject { IsSelected: true, Package: not null } pkgObj)
             {
                 selectedPackages.Add(pkgObj.Package.Name);
+                selectedPackageUpdates.Add(pkgObj.Package);
             }
         }
 
@@ -288,7 +291,9 @@ public class PackageUpdate(
             if (!configService.LoadConfig().NoConfirm)
             {
                 var args = new GenericQuestionEventArgs(
-                    "Update Packages?", string.Join("\n", selectedPackages)
+                    "Update Packages?",
+                    BuildUpdateConfirmationMessage(selectedPackageUpdates),
+                    true
                 );
 
                 genericQuestionService.RaiseQuestion(args);
@@ -323,6 +328,34 @@ public class PackageUpdate(
                 genericQuestionService.RaiseToastMessage(args);
             }
         }
+    }
+
+    private static string BuildUpdateConfirmationMessage(IEnumerable<AlpmPackageUpdateDto> selectedPackageUpdates)
+    {
+        var packages = selectedPackageUpdates.ToList();
+        if (packages.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        const int maxPackageColumnWidth = 28;
+        var packageColumnWidth = Math.Min(
+            maxPackageColumnWidth,
+            packages.Max(package => package.Name.Length));
+
+        return string.Join(Environment.NewLine, packages.Select(package =>
+            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.CurrentVersion} -> {package.NewVersion}"));
+    }
+
+    private static string FormatPackageName(string packageName, int width)
+    {
+        if (packageName.Length > width)
+        {
+            var truncatedWidth = Math.Max(1, width - 1);
+            packageName = packageName[..truncatedWidth] + "…";
+        }
+
+        return packageName.PadRight(width);
     }
 
     public void Dispose()
