@@ -17,6 +17,7 @@ public class MetaSearch(
     IGenericQuestionService genericQuestionService,
     ILockoutService lockoutService) : IShellyWindow
 {
+    private readonly CancellationTokenSource _cts = new();
     private Box _box = null!;
     private ColumnView _columnView = null!;
     private Gio.ListStore _listStore = null!;
@@ -332,6 +333,8 @@ public class MetaSearch(
 
     public void Dispose()
     {
+        _cts.Cancel();
+        _cts.Dispose();
         _listStore.RemoveAll();
         _packageGObjectRefs.Clear();
         _checkBinding.Clear();

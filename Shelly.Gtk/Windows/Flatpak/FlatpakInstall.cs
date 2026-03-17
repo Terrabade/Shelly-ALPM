@@ -764,5 +764,7 @@ public class FlatpakInstall(
         _cts.Dispose();
         _allPackages.Clear();
         _listStore?.RemoveAll();
+        _remoteListStore?.RemoveAll();
+        _selectedPackage = null!;
     }
 }

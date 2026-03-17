@@ -617,5 +617,8 @@ public class PackageInstall(
         _listStore.RemoveAll();
         _packageGObjectRefs.Clear();
         _checkBinding.Clear();
+        _packages.Clear();
+        _groups.Clear();
+        _currentDetailPkg = null;
     }
 }
