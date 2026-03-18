@@ -71,7 +71,11 @@ try
     {
         var updates = new UpdateService(menuHandler);
         var update = await updates.CheckForUpdates();
-        _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");
+        if (update > 0)
+        {
+            _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");
+        }
+
         var time = DateTime.Now;
         while (!token.IsCancellationRequested)
         {
@@ -81,7 +85,10 @@ try
                 if (time.AddSeconds(30) < DateTime.Now)
                 {
                     update = await updates.CheckForUpdates();
-                    _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");
+                    if (update > 0)
+                    {
+                        _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");
+                    }
                     time = DateTime.Now;
                 }
 
