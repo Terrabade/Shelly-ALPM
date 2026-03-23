@@ -515,21 +515,18 @@ public class PackageInstall(
 
     private bool FilterPackage(GObject.Object obj)
     {
-        if (obj is AlpmPackageGObject pkgObj && pkgObj.Package != null)
+        if (string.IsNullOrWhiteSpace(_searchText))
+            return true;
+
+        if (obj is not AlpmPackageGObject pkgObj || pkgObj.Package == null) return false;
+
+        if (_selectedGroup != "Any" && !pkgObj.Package.Groups.Contains(_selectedGroup))
         {
-            if (_selectedGroup != "Any" && !pkgObj.Package.Groups.Contains(_selectedGroup))
-            {
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(_searchText))
-                return true;
-
-            return pkgObj.Package.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                   pkgObj.Package.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+            return false;
         }
 
-        return false;
+        return pkgObj.Package.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+               pkgObj.Package.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task InstallSelectedAsync()
@@ -546,8 +543,8 @@ public class PackageInstall(
 
         if (selectedPackages.Count != 0)
         {
-            OperationResult? result = null; 
-            
+            OperationResult? result = null;
+
             try
             {
                 if (!configService.LoadConfig().NoConfirm)
@@ -590,7 +587,7 @@ public class PackageInstall(
             {
                 lockoutService.Hide();
             }
-            
+
             if (result == null)
             {
                 return;
