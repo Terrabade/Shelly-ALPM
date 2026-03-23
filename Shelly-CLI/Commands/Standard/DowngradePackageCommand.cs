@@ -31,7 +31,7 @@ public class DowngradePackageCommand : Command<DowngradePackageCommandSettings>
         AnsiConsole.MarkupLine($"[yellow]Looking for downgrade options for:[/]: {package}");
 
         var manager = new AlpmManager();
-        manager.IntializeWithSync();
+        manager.Initialize(true);
         var packages = SearchArchArchive(package);
         var selection = AnsiConsole.Prompt(
             new SelectionPrompt<string>()

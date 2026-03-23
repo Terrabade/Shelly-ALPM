@@ -143,6 +143,7 @@ public class UpgradeCommand : Command<UpgradeSettings>
     private static int HandleUiModeUpgrade(CommandContext context, UpgradeSettings settings)
     {
         Console.Error.WriteLine("Performing full system upgrade...");
+        Console.Error.WriteLine("fuckity fuck fuck");
 
         var manager = new AlpmManager();
         object renderLock = new();

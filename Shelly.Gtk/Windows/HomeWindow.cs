@@ -109,19 +109,19 @@ public class HomeWindow(
     {
         try
         {
-            var packagesNeedingUpdate = await privilegedOperationService.GetPackagesNeedingUpdateAsync();
-            if (packagesNeedingUpdate.Count == 0)
+            var packagesNeedingUpdate = await unprivilegedOperationService.CheckForApplicationUpdates();
+            var standardPackagesNeedingUpdate = packagesNeedingUpdate.Packages;
+            if (standardPackagesNeedingUpdate.Count == 0)
             {
-                var toastArgs = new ToastMessageEventArgs("System is already up to date");
+                var toastArgs = new ToastMessageEventArgs("Standard Packages is already up to date");
                 genericQuestionService.RaiseToastMessage(toastArgs);
-                return;
             }
 
             if (!configService.LoadConfig().NoConfirm)
             {
                 var confirmArgs = new GenericQuestionEventArgs(
                     "Upgrade All Packages?",
-                    BuildUpgradeConfirmationMessage(packagesNeedingUpdate),
+                    BuildUpgradeConfirmationMessage(standardPackagesNeedingUpdate),
                     true
                 );
 
@@ -133,8 +133,8 @@ public class HomeWindow(
             }
 
             lockoutService.Show("Upgrading all packages...");
-
-            var aurUpdates = await privilegedOperationService.GetAurUpdatePackagesAsync();
+            
+            var aurUpdates = packagesNeedingUpdate.Aur;
             if (aurUpdates.Count != 0)
             {
                 var aurPackageNames = aurUpdates.Select(p => p.Name).ToList();
@@ -190,7 +190,7 @@ public class HomeWindow(
         await Task.WhenAll(tasks);
     }
 
-    private static string BuildUpgradeConfirmationMessage(IEnumerable<AlpmPackageUpdateDto> packages)
+    private static string BuildUpgradeConfirmationMessage(IEnumerable<SyncPackageModel> packages)
     {
         var packageList = packages.ToList();
         if (packageList.Count == 0)
@@ -204,7 +204,7 @@ public class HomeWindow(
             packageList.Max(package => package.Name.Length));
 
         return string.Join(Environment.NewLine, packageList.Select(package =>
-            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.CurrentVersion} -> {package.NewVersion}"));
+            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.Version} -> {package.OldVersion}"));
     }
 
     private static string FormatPackageName(string packageName, int width)
