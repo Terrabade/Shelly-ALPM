@@ -20,7 +20,7 @@
                                 <property name="vexpand">true</property>
                                 <property name="hexpand">true</property>
                                 <child>
-                                    <object class="GtkListView" id="list_flatpaks"/>
+                                    <object class="GtkGridView" id="list_flatpaks"/>
                                 </child>
                             </object>
                         </child>
