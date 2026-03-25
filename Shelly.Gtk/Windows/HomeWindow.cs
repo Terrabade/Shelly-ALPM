@@ -4,6 +4,7 @@ using System.Xml.Linq;
 using Gtk;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
+using Shelly.Gtk.Services.Icons;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
@@ -17,6 +18,7 @@ public class HomeWindow(
     IUnprivilegedOperationService unprivilegedOperationService,
     IConfigService configService,
     ILockoutService lockoutService,
+    IIconResolverService iconResolverService,
     IGenericQuestionService genericQuestionService,
     MetaSearch metaSearch) : IShellyWindow
 {
@@ -47,9 +49,9 @@ public class HomeWindow(
         {
             var query = homeSearchEntry.GetText();
             if (string.IsNullOrWhiteSpace(query)) return;
-            
+
             searchPromptOverlay.SetVisible(false);
-            
+
             while (metaSearchContainer.GetFirstChild() is { } child)
                 metaSearchContainer.Remove(child);
 
@@ -77,14 +79,17 @@ public class HomeWindow(
         _totalFlatpakLabel.OnRealize += (sender, args) => { _ = LoadTotalFlatpak(_totalFlatpakLabel, _cts.Token); };
 
         _flatpakPercentLabel = (Label)builder.GetObject("FlatpakPercent")!;
-        _flatpakPercentLabel.OnRealize += (sender, args) => { _ = LoadPercentFlatpak(_flatpakPercentLabel, _cts.Token); };
+        _flatpakPercentLabel.OnRealize += (sender, args) =>
+        {
+            _ = LoadPercentFlatpak(_flatpakPercentLabel, _cts.Token);
+        };
 
         var exportSyncButton = (Button)builder.GetObject("ExportSyncButton")!;
         exportSyncButton.OnClicked += (sender, args) => { _ = ExportSync(); };
 
         var upgradeAllButton = (Button)builder.GetObject("UpgradeAllButton")!;
         upgradeAllButton.OnClicked += (sender, args) => { _ = UpgradeAll(); };
-
+        
         var config = configService.LoadConfig();
         var aurBox = (Box)builder.GetObject("AurBox")!;
         var flatpakBox = (Box)builder.GetObject("FlatpakBox")!;
@@ -109,19 +114,28 @@ public class HomeWindow(
     {
         try
         {
-            var packagesNeedingUpdate = await privilegedOperationService.GetPackagesNeedingUpdateAsync();
-            if (packagesNeedingUpdate.Count == 0)
+            var packagesNeedingUpdate = await unprivilegedOperationService.CheckForApplicationUpdates();
+
+            if (packagesNeedingUpdate.Aur.Count == 0 && packagesNeedingUpdate.Packages.Count == 0 &&
+                packagesNeedingUpdate.Flatpaks.Count == 0)
             {
-                var toastArgs = new ToastMessageEventArgs("System is already up to date");
+                var toastArgs = new ToastMessageEventArgs("No packages need to be upgraded");
                 genericQuestionService.RaiseToastMessage(toastArgs);
                 return;
+            }
+            
+            var standardPackagesNeedingUpdate = packagesNeedingUpdate.Packages;
+            if (standardPackagesNeedingUpdate.Count == 0)
+            {
+                var toastArgs = new ToastMessageEventArgs("Standard Packages is already up to date");
+                genericQuestionService.RaiseToastMessage(toastArgs);
             }
 
             if (!configService.LoadConfig().NoConfirm)
             {
                 var confirmArgs = new GenericQuestionEventArgs(
                     "Upgrade All Packages?",
-                    BuildUpgradeConfirmationMessage(packagesNeedingUpdate),
+                    BuildUpgradeConfirmationMessage(standardPackagesNeedingUpdate),
                     true
                 );
 
@@ -133,8 +147,8 @@ public class HomeWindow(
             }
 
             lockoutService.Show("Upgrading all packages...");
-
-            var aurUpdates = await privilegedOperationService.GetAurUpdatePackagesAsync();
+            
+            var aurUpdates = packagesNeedingUpdate.Aur;
             if (aurUpdates.Count != 0)
             {
                 var aurPackageNames = aurUpdates.Select(p => p.Name).ToList();
@@ -190,7 +204,7 @@ public class HomeWindow(
         await Task.WhenAll(tasks);
     }
 
-    private static string BuildUpgradeConfirmationMessage(IEnumerable<AlpmPackageUpdateDto> packages)
+    private static string BuildUpgradeConfirmationMessage(IEnumerable<SyncPackageModel> packages)
     {
         var packageList = packages.ToList();
         if (packageList.Count == 0)
@@ -204,7 +218,7 @@ public class HomeWindow(
             packageList.Max(package => package.Name.Length));
 
         return string.Join(Environment.NewLine, packageList.Select(package =>
-            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.CurrentVersion} -> {package.NewVersion}"));
+            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.Version} -> {package.OldVersion}"));
     }
 
     private static string FormatPackageName(string packageName, int width)
@@ -309,6 +323,9 @@ public class HomeWindow(
     private async Task LoadTotalPackagePercentData(Label label, CancellationToken ct)
     {
         var packages = await privilegedOperationService.GetInstalledPackagesAsync();
+
+        PreLoadIcons(packages.Select(x => x.Name).ToList());
+        
         ct.ThrowIfCancellationRequested();
         var updates = await unprivilegedOperationService.CheckForApplicationUpdates();
         ct.ThrowIfCancellationRequested();
@@ -332,6 +349,15 @@ public class HomeWindow(
         {
             Console.WriteLine(e);
         }
+    }
+
+    private void PreLoadIcons(List<string> icons)
+    {
+        Task.Run(() =>
+        {
+            iconResolverService.PreloadIcons(icons);
+            return Task.CompletedTask;
+        });
     }
 
     private async Task LoadTotalPackageData(Label label, CancellationToken ct)
@@ -477,6 +503,7 @@ public class HomeWindow(
             vbox.Append(date);
             vbox.Append(desc);
 
+            row.SetActivatable(false);
             row.SetChild(vbox);
             listBox.Append(row);
         }

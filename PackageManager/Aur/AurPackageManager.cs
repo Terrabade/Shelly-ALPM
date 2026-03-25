@@ -455,12 +455,11 @@ public class AurPackageManager(string? configPath = null)
         }
     }
 
-    public async Task RemovePackages(List<string> packageNames)
+    public async Task RemovePackages(List<string> packageNames, AlpmTransFlag flags = AlpmTransFlag.None)
     {
+        _alpm.RemovePackages(packageNames, flags);
         foreach (var packageName in packageNames)
         {
-            // Remove package via ALPM
-            _alpm.RemovePackage(packageName);
 
             // Clean up cache folder
             var user = Environment.GetEnvironmentVariable("SUDO_USER") ?? Environment.UserName;

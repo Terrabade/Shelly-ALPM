@@ -13,11 +13,13 @@ namespace Shelly.Gtk.Windows.Packages;
 
 public class PackageUpdate(
     IPrivilegedOperationService privilegedOperationService,
+    IUnprivilegedOperationService unprivilegedOperationService,
     ILockoutService lockoutService,
     IConfigService configService,
     IGenericQuestionService genericQuestionService) : IShellyWindow
 {
     private readonly CancellationTokenSource _cts = new();
+    private bool _suppressToggleConfirmation;
     private Box _box = null!;
     private ColumnView _columnView = null!;
     private SingleSelection _selectionModel = null!;
@@ -87,7 +89,14 @@ public class PackageUpdate(
             var item = _selectionModel.GetSelectedItem();
             if (item is AlpmUpdateGObject pkgObj)
             {
-                pkgObj.ToggleSelection();
+                if (pkgObj.IsSelected)
+                {
+                    _ = ConfirmPartialUpdateAsync(() => pkgObj.ToggleSelection());
+                }
+                else
+                {
+                    pkgObj.ToggleSelection();
+                }
             }
         };
         searchEntry.OnSearchChanged += (_, _) =>
@@ -128,7 +137,26 @@ public class PackageUpdate(
 
             void OnToggled(CheckButton s, EventArgs e)
             {
-                pkgObj.IsSelected = s.GetActive();
+                if (_suppressToggleConfirmation)
+                {
+                    pkgObj.IsSelected = s.GetActive();
+                    return;
+                }
+
+                if (!s.GetActive())
+                {
+                    s.SetActive(true);
+                    var __ = ConfirmPartialUpdateAsync(() =>
+                    {
+                        _suppressToggleConfirmation = true;
+                        s.SetActive(false);
+                        _suppressToggleConfirmation = false;
+                    });
+                }
+                else
+                {
+                    pkgObj.IsSelected = true;
+                }
             }
 
             void OnExternalToggle(object? s, EventArgs e)
@@ -237,7 +265,7 @@ public class PackageUpdate(
     {
         try
         {
-            var packages = await privilegedOperationService.GetPackagesNeedingUpdateAsync();
+            var packages = await unprivilegedOperationService.CheckForStandardApplicationUpdates();
             GLib.Functions.IdleAdd(0, () =>
             {
                 _listStore.RemoveAll();
@@ -248,6 +276,7 @@ public class PackageUpdate(
                     _packageGObjectRefs.Add(pkgObj);
                     _listStore.Append(pkgObj);
                 }
+
                 _noPackagesLabel.Visible = packages.Count == 0;
                 return false;
             });
@@ -255,6 +284,20 @@ public class PackageUpdate(
         catch (Exception e)
         {
             Console.WriteLine($"Failed to load packages: {e.Message}");
+        }
+    }
+
+    private async Task ConfirmPartialUpdateAsync(Action onConfirmed)
+    {
+        var args = new GenericQuestionEventArgs(
+            "Partial Update Warning",
+            "It is not advised you do partial system updates. Are you sure you want to continue?"
+        );
+
+        genericQuestionService.RaiseQuestion(args);
+        if (await args.ResponseTask)
+        {
+            onConfirmed();
         }
     }
 

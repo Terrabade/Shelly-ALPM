@@ -19,7 +19,7 @@ public interface IPrivilegedOperationService
     Task<OperationResult> ForceSyncDatabaseAsync();
     Task<OperationResult> RemoveDbLockAsync();
     Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages);
-    Task<OperationResult> RemoveAurPackagesAsync(IEnumerable<string> packages);
+    Task<OperationResult> RemoveAurPackagesAsync(IEnumerable<string> packages, bool isCascade = false);
     Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages);
     Task<List<PackageBuild>> GetAurPackageBuild(IEnumerable<string> packages);
     Task<List<AlpmPackageUpdateDto>> GetPackagesNeedingUpdateAsync();

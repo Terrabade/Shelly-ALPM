@@ -26,6 +26,13 @@
         </object>
       </child>
       <child>
+        <object class="GtkCheckButton" id="cascade_delete_check">
+          <property name="halign">start</property>
+          <property name="label">Cascade Delete</property>
+          <property name="active">true</property>
+        </object>
+      </child>
+      <child>
         <object class="GtkSearchEntry" id="search_entry">
           <property name="placeholder-text">Search packages...</property>
           <property name="width-request">200</property>

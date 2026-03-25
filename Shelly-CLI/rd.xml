@@ -56,6 +56,7 @@
             <Type Name="Shelly_CLI.Commands.Aur.AurUpgradeCommand" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Aur.AurRemoveCommand" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Aur.AurSearchPackageBuild" Dynamic="Required All"/>
+            <Type Name="Shelly_CLI.Commands.Aur.AurRemovePackageSettings" Dynamic="Required All"/>
             <!-- Flatpak commands -->
             <Type Name="Shelly_CLI.Commands.Flatpak.FlathubSearchSettings" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Flatpak.FlathubSearchCommand" Dynamic="Required All"/>

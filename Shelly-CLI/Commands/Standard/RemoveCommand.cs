@@ -23,6 +23,7 @@ public class RemoveCommand : Command<RemovePackageSettings>
             AnsiConsole.MarkupLine("[red]Error: No packages specified[/]");
             return 1;
         }
+
         RootElevator.EnsureRootExectuion();
         var packageList = settings.Packages.ToList();
 
@@ -90,15 +91,17 @@ public class RemoveCommand : Command<RemovePackageSettings>
             }
         };
 
+        var flags = AlpmTransFlag.None;
         if (settings.Cascade)
         {
-            manager.RemovePackages(packageList, AlpmTransFlag.Cascade);
-        }
-        else
-        {
-            manager.RemovePackages(packageList);
-        }
+            flags |= AlpmTransFlag.NoSave|AlpmTransFlag.Recurse;
 
+        }
+        else if(settings.Ripple)
+        {
+            flags |= AlpmTransFlag.Cascade;
+        }
+        manager.RemovePackages(packageList,flags);
         if (settings.RemoveConfig)
         {
             HandleConfigRemoval(settings.Packages);
@@ -126,7 +129,7 @@ public class RemoveCommand : Command<RemovePackageSettings>
         return 0;
     }
 
-    private static int HandleUiModeRemove(PackageSettings settings)
+    private static int HandleUiModeRemove(RemovePackageSettings settings)
     {
         if (settings.Packages.Length == 0)
         {
@@ -149,6 +152,21 @@ public class RemoveCommand : Command<RemovePackageSettings>
             manager.Initialize(true);
 
             Console.Error.WriteLine($"Removing packages: {string.Join(", ", packageList)}");
+            var flags = AlpmTransFlag.None;
+            if (settings.Cascade)
+            {
+                flags |= AlpmTransFlag.NoSave|AlpmTransFlag.Recurse;
+
+            }
+            else if(settings.Ripple)
+            {
+                flags |= AlpmTransFlag.Cascade;
+            }
+            manager.RemovePackages(packageList,flags);
+            if (settings.RemoveConfig)
+            {
+                HandleConfigRemoval(settings.Packages);
+            }
             manager.RemovePackages(packageList);
             Console.Error.WriteLine("Packages removed successfully!");
 

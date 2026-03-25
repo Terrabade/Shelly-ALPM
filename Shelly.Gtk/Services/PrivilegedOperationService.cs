@@ -196,9 +196,14 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         return await ExecutePrivilegedWithNoConfirmCheck("Install AUR packages", "aur", "install", packageArgs);
     }
 
-    public async Task<OperationResult> RemoveAurPackagesAsync(IEnumerable<string> packages)
+    public async Task<OperationResult> RemoveAurPackagesAsync(IEnumerable<string> packages, bool isCascade = false)
     {
         var packageArgs = string.Join(" ", packages);
+        if (isCascade)
+        {
+            packageArgs += " -c";
+        }
+
         return await ExecutePrivilegedWithNoConfirmCheck("Remove AUR packages", "aur", "remove", packageArgs);
     }
 

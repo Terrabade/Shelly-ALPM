@@ -16,17 +16,25 @@ public class ListUpdatesCommand : Command<DefaultSettings>
         {
             return HandleUiModeListUpdates(settings);
         }
-        using var manager = new AlpmManager();
 
+        using var manager = new AlpmManager();
+        var username = Environment.GetEnvironmentVariable("USER");
+        var dbPath = Path.Combine("/home", username, ".cache", "Shelly", "db");
+        Directory.CreateDirectory(dbPath);
         if (!settings.JsonOutput)
         {
             AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
-                .Start("Initializing and syncing ALPM...", ctx => { manager.IntializeWithSync(); });
+                .Start("Initializing and syncing ALPM...", ctx =>
+                {
+                    manager.Initialize(false, true, dbPath);
+                    manager.Sync();
+                });
         }
         else
         {
-            manager.IntializeWithSync();
+            manager.Initialize(false, true, dbPath);
+            manager.Sync();
         }
 
         var updates = manager.GetPackagesNeedingUpdate();
@@ -88,8 +96,11 @@ public class ListUpdatesCommand : Command<DefaultSettings>
     private static int HandleUiModeListUpdates(DefaultSettings settings)
     {
         using var manager = new AlpmManager();
-        manager.IntializeWithSync();
-
+        var username = Environment.GetEnvironmentVariable("USER");
+        var dbPath = Path.Combine("/home", username, ".cache", "Shelly", "db");
+        Directory.CreateDirectory(dbPath);
+        manager.Initialize(false, true, dbPath);
+        manager.Sync();
         var updates = manager.GetPackagesNeedingUpdate();
 
         if (settings.JsonOutput)

@@ -38,3 +38,14 @@ public class AurUpgradeSettings : CommandSettings
     [Description("Proceed without asking for user confirmation")]
     public bool NoConfirm { get; set; }
 }
+
+public class AurRemovePackageSettings : AurPackageSettings
+{
+    [CommandOption("-c | --cascade")]
+    [Description("Removes all things the removed package(s) are dependent on that have no other uses")]
+    public bool Cascade { get; set; }
+
+    [CommandOption("-i | --ripple")]
+    [Description("Removes packages that depend on the package being removed")]
+    public bool Ripple { get; set; }
+}

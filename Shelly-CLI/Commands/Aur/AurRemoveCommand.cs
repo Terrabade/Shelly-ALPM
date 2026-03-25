@@ -10,15 +10,16 @@ using Spectre.Console.Cli;
 
 namespace Shelly_CLI.Commands.Aur;
 
-public class AurRemoveCommand : AsyncCommand<AurPackageSettings>
+public class AurRemoveCommand : AsyncCommand<AurRemovePackageSettings>
 {
-    public override async Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] AurPackageSettings settings)
+    public override async Task<int> ExecuteAsync([NotNull] CommandContext context,
+        [NotNull] AurRemovePackageSettings settings)
     {
         if (Program.IsUiMode)
         {
             return await HandleUiModeRemove(settings);
         }
-        
+
         AurPackageManager? manager = null;
         if (settings.Packages.Length == 0)
         {
@@ -59,9 +60,19 @@ public class AurRemoveCommand : AsyncCommand<AurPackageSettings>
                 {
                     AnsiConsole.WriteLine();
                     // Handle SelectProvider and ConflictPkg differently - they need a selection, not yes/no
-                    QuestionHandler.HandleQuestion(args,Program.IsUiMode,settings.NoConfirm);
+                    QuestionHandler.HandleQuestion(args, Program.IsUiMode, settings.NoConfirm);
                 }
             };
+            var flags = AlpmTransFlag.None;
+            if (settings.Cascade)
+            {
+                flags |= AlpmTransFlag.NoSave|AlpmTransFlag.Recurse;
+
+            }
+            else if(settings.Ripple)
+            {
+                flags |= AlpmTransFlag.Cascade;
+            }
 
             AnsiConsole.MarkupLine($"[yellow]Removing AUR packages: {string.Join(", ", settings.Packages)}[/]");
             var progressTable = new Table().AddColumns("Package", "Progress", "Status", "Stage");
@@ -99,7 +110,7 @@ public class AurRemoveCommand : AsyncCommand<AurPackageSettings>
                             ctx.Refresh();
                         }
                     };
-                    await manager.RemovePackages(settings.Packages.ToList());
+                    await manager.RemovePackages(settings.Packages.ToList(),flags);
                 });
             AnsiConsole.MarkupLine("[green]Removal complete.[/]");
 
@@ -116,12 +127,22 @@ public class AurRemoveCommand : AsyncCommand<AurPackageSettings>
         }
     }
 
-    private static async Task<int> HandleUiModeRemove(AurPackageSettings settings)
+    private static async Task<int> HandleUiModeRemove(AurRemovePackageSettings settings)
     {
         if (settings.Packages.Length == 0)
         {
             Console.Error.WriteLine("Error: No packages specified");
             return 1;
+        }
+        var flags = AlpmTransFlag.None;
+        if (settings.Cascade)
+        {
+            flags |= AlpmTransFlag.NoSave|AlpmTransFlag.Recurse;
+
+        }
+        else if(settings.Ripple)
+        {
+            flags |= AlpmTransFlag.Cascade;
         }
 
         AurPackageManager? manager = null;
@@ -136,23 +157,17 @@ public class AurRemoveCommand : AsyncCommand<AurPackageSettings>
             manager.PackageProgress += (sender, args) =>
             {
                 Console.Error.WriteLine($"[{args.CurrentIndex}/{args.TotalCount}] {args.PackageName}: {args.Status}" +
-                    (args.Message != null ? $" - {args.Message}" : ""));
+                                        (args.Message != null ? $" - {args.Message}" : ""));
             };
 
             // Handle progress events
-            manager.Progress += (sender, args) =>
-            {
-                Console.Error.WriteLine($"{args.PackageName}: {args.Percent}%");
-            };
+            manager.Progress += (sender, args) => { Console.Error.WriteLine($"{args.PackageName}: {args.Percent}%"); };
 
             // Handle questions
-            manager.Question += (sender, args) =>
-            {
-                QuestionHandler.HandleQuestion(args, true, settings.NoConfirm);
-            };
+            manager.Question += (sender, args) => { QuestionHandler.HandleQuestion(args, true, settings.NoConfirm); };
 
             Console.Error.WriteLine($"Removing AUR packages: {string.Join(", ", packageList)}");
-            await manager.RemovePackages(packageList);
+            await manager.RemovePackages(packageList,flags);
             Console.Error.WriteLine("Removal complete.");
 
             return 0;

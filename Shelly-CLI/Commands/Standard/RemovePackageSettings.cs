@@ -9,7 +9,12 @@ public class RemovePackageSettings : PackageSettings
     [Description("Removes all things the removed package(s) are dependent on that have no other uses")]
     public bool Cascade { get; set; }
 
+    [CommandOption("-i | --ripple")]
+    [Description("Removes packages that depend on the package being removed")]
+    public bool Ripple { get; set; }
+
     [CommandOption("-r | --remove-config")]
-    [Description("Removes any files in your ~/.config that can be tied exclusively to the removed package(s). This is EXPERIMENTAL and has no guarantees of working")]
+    [Description(
+        "Removes any files in your ~/.config that can be tied exclusively to the removed package(s). This is EXPERIMENTAL and has no guarantees of working")]
     public bool RemoveConfig { get; set; }
 }
