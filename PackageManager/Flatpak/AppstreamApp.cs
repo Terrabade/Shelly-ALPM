@@ -39,6 +39,10 @@ public class AppstreamApp
     public string VerificationMethod { get; set; } = string.Empty;
 
     public List<FlatpakRemoteDto> Remotes { get; set; } = [];
+
+    public string? Extends { get; set; }
+    
+    public List<AppstreamApp> Addons { get; set; } = new();
 }
 
 /// <summary>

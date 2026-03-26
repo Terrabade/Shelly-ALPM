@@ -53,6 +53,15 @@
                                             </object>
                                         </child>
                                         <child>
+                                            <object class="GtkButton" id="overlay_show_plugin_button">
+                                                <property name="label">Manage Addons</property>
+                                                <property name="visible">false</property>
+                                                <style>
+                                                    <class name="suggested-action"/>
+                                                </style>
+                                            </object>
+                                        </child>
+                                        <child>
                                             <object class="GtkDropDown" id="overlay_remote_selection">
                                                 <property name="tooltip-text">Group Filter</property>
                                             </object>

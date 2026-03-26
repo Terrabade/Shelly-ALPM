@@ -48,6 +48,7 @@ public class AppstreamParser
     private List<AppstreamApp> ParseStream(Stream stream)
     {
         var apps = new List<AppstreamApp>();
+        var addons = new List<AppstreamApp>();
         var doc = XDocument.Load(stream);
 
         var components = doc.Root?.Elements("component");
@@ -61,11 +62,33 @@ public class AppstreamParser
             var app = ParseComponent(component);
             if (app != null)
             {
-                apps.Add(app);
+                if (app.Type == "addon")
+                {
+                    addons.Add(app);
+                }
+                else
+                {
+                    apps.Add(app);
+                }
+            }
+        }
+
+        // Associate addons with their parent applications
+        foreach (var addon in addons)
+        {
+            if (!string.IsNullOrEmpty(addon.Extends))
+            {
+                var parentApp = apps.FirstOrDefault(a => a.Id == addon.Extends);
+                if (parentApp != null)
+                {
+                    parentApp.Addons.Add(addon);
+                }
             }
         }
 
         return apps;
+        
+       
     }
 
     /// <summary>
@@ -75,8 +98,8 @@ public class AppstreamParser
     {
         var type = component.Attribute("type")?.Value;
 
-        // Only parse desktop applications by default
-        if (type != "desktop-application" && type != "console-application")
+        // Parse desktop applications, console applications, and addons
+        if (type != "desktop-application" && type != "console-application" && type != "addon")
         {
             return null;
         }
@@ -93,8 +116,9 @@ public class AppstreamParser
             DeveloperName = component.Element("developer_name")?.Value
                 ?? component.Element("developer")?.Element("name")?.Value
                 ?? string.Empty,
+            Extends = component.Element("extends")?.Value
         };
-
+        
         // Parse description
         var descriptionElement = component.Elements("description")
             .FirstOrDefault(e => e.Attribute(XNamespace.Xml + "lang") == null);

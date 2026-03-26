@@ -24,7 +24,7 @@ public interface IUnprivilegedOperationService
     Task<UnprivilegedOperationResult> RemoveFlatpakPackage(string package, bool config);
 
     Task<UnprivilegedOperationResult> InstallFlatpakPackage(string package, bool user,
-        string remote, string branch);
+        string remote, string branch, bool isRuntime = false);
 
     Task<UnprivilegedOperationResult> FlatpakSyncRemoteAppstream();
     

@@ -182,16 +182,16 @@ public class UnprivilegedOperationService : IUnprivilegedOperationService
     }
 
     public async Task<UnprivilegedOperationResult> InstallFlatpakPackage(string package, bool user, string remote,
-        string branch)
+        string branch, bool isRuntime = false)
     {
         if (user)
         {
             return await ExecuteUnprivilegedCommandAsync("Install package", "flatpak install", package, "--user",
-                "--remote", remote, "--branch", branch);
+                "--remote", remote, "--branch", branch, isRuntime ? "--runtime" : "");
         }
 
         return await ExecuteUnprivilegedCommandAsync("Install package", "flatpak install", package, "--remote", remote,
-            "--branch", branch);
+            "--branch", branch, isRuntime ? "--runtime" : "");
     }
 
     public async Task<UnprivilegedOperationResult> FlatpakUpgrade()

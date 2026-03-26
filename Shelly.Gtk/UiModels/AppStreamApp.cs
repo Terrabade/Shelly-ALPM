@@ -41,8 +41,18 @@ public class AppstreamApp
     public bool IsVerified { get; set; }
 
     public string VerificationMethod { get; set; } = string.Empty;
-  
+
     public List<FlatpakRemoteDto> Remotes { get; set; } = [];
+
+    /// <summary>
+    /// For addons, the ID of the parent application this extends
+    /// </summary>
+    public string? Extends { get; set; }
+
+    /// <summary>
+    /// List of addons that extend this application
+    /// </summary>
+    public List<AppstreamApp> Addons { get; set; } = new();
 }
 
 /// <summary>
