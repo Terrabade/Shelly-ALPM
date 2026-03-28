@@ -167,7 +167,6 @@ public class RemoveCommand : Command<RemovePackageSettings>
             {
                 HandleConfigRemoval(settings.Packages);
             }
-            manager.RemovePackages(packageList);
             Console.Error.WriteLine("Packages removed successfully!");
 
             return 0;
