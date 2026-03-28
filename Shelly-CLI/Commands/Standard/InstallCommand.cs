@@ -123,13 +123,20 @@ public class InstallCommand : Command<InstallPackageSettings>
                 lastPercent = pct;
             }
         };
+        
+        manager.ScriptletInfo += (sender, args) =>
+        {
+            Console.WriteLine(args.Line);
+        };
 
+        manager.HookRun += (sender, args) =>
+        {
+            Console.WriteLine(args.Description);
+        };
 
         manager.InstallPackages(packageList);
         Console.WriteLine(); // Final newline after last package
 
-        manager.Dispose();
-        AnsiConsole.MarkupLine("[green]Packages installed successfully![/]");
         manager.Dispose();
         AnsiConsole.MarkupLine("[green]Packages installed successfully![/]");
         return 0;
@@ -152,7 +159,7 @@ public class InstallCommand : Command<InstallPackageSettings>
             }).Wait();
         }
 
-        var manager = new AlpmManager();
+        using var manager = new AlpmManager();
         manager.Question += (sender, args) => { QuestionHandler.HandleQuestion(args, true, settings.NoConfirm); };
         Console.Error.WriteLine("Initializing ALPM...");
         manager.Initialize(true);
@@ -190,6 +197,10 @@ public class InstallCommand : Command<InstallPackageSettings>
         Console.WriteLine("Installing packages...");
         var rowIndex = new Dictionary<string, int>();
         manager.Progress += (sender, args) => { Console.WriteLine($"{args.PackageName}: {args.Percent}%"); };
+        manager.HookRun += (sender, args) =>
+        {
+            Console.Error.WriteLine($"[ALPM_HOOK]{args.Description}");
+        };
         try
         {
             manager.InstallPackages(settings.Packages.ToList());
@@ -198,11 +209,9 @@ public class InstallCommand : Command<InstallPackageSettings>
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[ALPM_ERROR]Failed to install packages: {ex.Message}");
-            manager.Dispose();
             return 1;
         }
-
-        manager.Dispose();
+        
         return 0;
     }
 }

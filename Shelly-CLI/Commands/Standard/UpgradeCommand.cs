@@ -117,6 +117,16 @@ public class UpgradeCommand : AsyncCommand<UpgradeSettings>
                         ctx.Refresh();
                     }
                 };
+                manager.ScriptletInfo += (sender, args) =>
+                {
+                    Console.WriteLine(args.Line);
+                };
+
+                manager.HookRun += (sender, args) =>
+                {
+                    Console.WriteLine(args.Description);
+                };
+
                 await manager.SyncSystemUpdate();
             });
 
@@ -194,6 +204,11 @@ public class UpgradeCommand : AsyncCommand<UpgradeSettings>
                 var actionType = args.ProgressType;
                 Console.Error.WriteLine($"{name}: {pct}% - {actionType}");
             }
+        };
+
+        manager.HookRun += (sender, args) =>
+        {
+            Console.Error.WriteLine($"[ALPM_HOOK]{args.Description}");
         };
 
         await manager.SyncSystemUpdate();

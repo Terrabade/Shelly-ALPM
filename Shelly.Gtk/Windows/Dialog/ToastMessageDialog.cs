@@ -27,7 +27,10 @@ public static class ToastMessageDialog
 
             GLib.Functions.TimeoutAdd(0, (uint)3000, () =>
             {
-                parentOverlay.RemoveOverlay(toastBox);
+                if (toastBox.GetParent() != null)
+                {
+                    parentOverlay.RemoveOverlay(toastBox);
+                }
                 return false;
             });
 

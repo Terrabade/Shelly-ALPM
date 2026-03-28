@@ -760,6 +760,22 @@ public class PrivilegedOperationService : IPrivilegedOperationService
                                 await SafeWriteAsync(args.Response == 1 ? "y" : "n");
                             }
                         }
+                        else if (e.Data.StartsWith("[Shelly][ALPM_SCRIPTLET]"))
+                        {
+                            var line = e.Data.Substring("[Shelly][ALPM_SCRIPTLET]".Length);
+                            if (!string.IsNullOrEmpty(line))
+                            {
+                                _alpmEventService.RaiseScriptletInfo(new ScriptletInfoEventArgs(line));
+                            }
+                        }
+                        else if (e.Data.StartsWith("[Shelly][ALPM_HOOK]"))
+                        {
+                            var line = e.Data.Substring("[Shelly][ALPM_HOOK]".Length);
+                            if (!string.IsNullOrEmpty(line))
+                            {
+                                _alpmEventService.RaiseHookInfo(new HookInfoEventArgs(line));
+                            }
+                        }
                         // Check for generic ALPM question (yes/no)
                         else if (e.Data.StartsWith("[Shelly][ALPM_QUESTION]"))
                         {
@@ -785,6 +801,11 @@ public class PrivilegedOperationService : IPrivilegedOperationService
                             errorBuilder.AppendLine(e.Data);
                             Console.Error.WriteLine(e.Data);
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"Error processing stderr: {ex.Message}");
+                        errorBuilder.AppendLine(e.Data);
                     }
                     finally
                     {
