@@ -235,6 +235,32 @@
               </object>
             </child>
             <child>
+              <object class="GtkBox">
+                <property name="orientation">horizontal</property>
+                <property name="spacing">12</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Parallel Downloads</property>
+                    <property name="hexpand">true</property>
+                    <property name="halign">start</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="parallel_downloads_spin">
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">1</property>
+                        <property name="upper">20</property>
+                        <property name="step-increment">1</property>
+                        <property name="value">10</property>
+                      </object>
+                    </property>
+                    <property name="numeric">true</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
               <object class="GtkButton" id="sync_button">
                 <property name="label">Force Database Update</property>
                 <property name="margin-top">10</property>

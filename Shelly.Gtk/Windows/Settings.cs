@@ -31,6 +31,14 @@ public class Settings(
         SetupSwitch("no_confirm_switch", _config.NoConfirm, (v) => _config.NoConfirm = v, builder);
         SetupSwitch("webview_switch", _config.WebViewEnabled, (v) => _config.WebViewEnabled = v, builder);
 
+        var parallelDownloadsSpin = (SpinButton)builder.GetObject("parallel_downloads_spin")!;
+        parallelDownloadsSpin.Value = _config.ParallelDownloadCount;
+        parallelDownloadsSpin.OnValueChanged += (s, e) =>
+        {
+            _config.ParallelDownloadCount = (int)parallelDownloadsSpin.Value;
+            SaveConfig();
+        };
+
         var traySpin = (SpinButton)builder.GetObject("tray_interval_spin")!;
         traySpin.Value = _config.TrayCheckIntervalHours;
         traySpin.OnValueChanged += (s, e) =>

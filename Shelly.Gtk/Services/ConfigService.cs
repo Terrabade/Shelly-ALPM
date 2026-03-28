@@ -43,6 +43,7 @@ public class ConfigService : IConfigService
         CallCliConfigSet(nameof(config.WebViewEnabled), config.WebViewEnabled.ToString());
         CallCliConfigSet(nameof(config.FileSizeDisplay), config.FileSizeDisplay);
         CallCliConfigSet(nameof(config.DefaultExecution), config.DefaultExecution);
+        CallCliConfigSet(nameof(config.ParallelDownloadCount), config.ParallelDownloadCount.ToString());
 
         ConfigSaved?.Invoke(this, config);
     }
