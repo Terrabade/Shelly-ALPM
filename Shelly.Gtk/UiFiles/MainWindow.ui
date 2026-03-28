@@ -64,15 +64,9 @@
                   <object class="GtkBox" id="MenuBox">
                     <property name="orientation">horizontal</property>
                     <property name="spacing">4</property>
-                  
                     <child>
                       <object class="GtkMenuButton" id="PackagesMenuButton">
                         <property name="menu-model">PackagesMenu</property>
-                        <property name="has-frame">false</property>
-                        <property name="always-show-arrow">False</property>
-                          <property name="direction">none</property>
-                       
-                      
                         <child>
                           <object class="GtkBox">
                             <property name="orientation">horizontal</property>
@@ -80,12 +74,18 @@
                             <child>
                               <object class="GtkImage">
                                 <property name="icon-name">package-x-generic-symbolic</property>
-                                 <property name="pixel-size">16</property>
+                                <property name="pixel-size">16</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkLabel">
                                 <property name="label">Packages</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="icon-name">pan-down-symbolic</property>
+                                <property name="pixel-size">12</property>
                               </object>
                             </child>
                           </object>
@@ -95,7 +95,6 @@
                     <child>
                       <object class="GtkMenuButton" id="AurMenuButton">
                         <property name="menu-model">AurMenu</property>
-                        <property name="has-frame">false</property>
                         <style>
                         </style>
                         <child>
@@ -113,6 +112,12 @@
                                 <property name="label">AUR</property>
                               </object>
                             </child>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="icon-name">pan-down-symbolic</property>
+                                <property name="pixel-size">12</property>
+                              </object>
+                            </child>
                           </object>
                         </child>
                       </object>
@@ -120,7 +125,6 @@
                     <child>
                       <object class="GtkMenuButton" id="FlatpakMenuButton">
                         <property name="menu-model">FlatpakMenu</property>
-                        <property name="has-frame">false</property>
                         <child>
                           <object class="GtkBox">
                             <property name="orientation">horizontal</property>
@@ -136,6 +140,12 @@
                                 <property name="label">Flatpak</property>
                               </object>
                             </child>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="icon-name">pan-down-symbolic</property>
+                                <property name="pixel-size">12</property>
+                              </object>
+                            </child>
                           </object>
                         </child>
                       </object>
@@ -145,19 +155,13 @@
                 <child>
                   <object class="GtkButton" id="HomeButton">
                     <property name="icon-name">go-home-symbolic</property>
-                    <property name="has-frame">false</property>
-                    <style>
-                      <class name="nav-button"/>
-                    </style>
+
                   </object>
                 </child>
                 <child type="end">
                   <object class="GtkButton" id="SettingsButton">
                     <property name="icon-name">emblem-system-symbolic</property>
-                    <property name="has-frame">false</property>
-                    <style>
-                      <class name="nav-button"/>
-                    </style>
+
                   </object>
                 </child>
               </object>
