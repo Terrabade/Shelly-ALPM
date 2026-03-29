@@ -82,11 +82,13 @@
             <property name="spacing">10</property>
             <property name="hexpand">true</property>
             <property name="homogeneous">true</property>
+            <property name="vexpand">false</property>
+            <property name="valign">end</property>
             <child>
               <object class="GtkFrame">
                 <property name="hexpand">true</property>
                 <property name="width-request">300</property>
-                <property name="height-request">210</property>
+                <property name="height-request">250</property>
                 <style>
                   <class name="rounded-card"/>
                 </style>
@@ -111,7 +113,7 @@
                       <object class="GtkScrolledWindow">
                         <property name="vscrollbar-policy">automatic</property>
                         <property name="hscrollbar-policy">never</property>
-                        <property name="height-request">150</property>
+                        <property name="vexpand">true</property>
                         <child>
                           <object class="GtkListBox" id="OperationLogListBox">
                             <property name="selection-mode">none</property>
@@ -131,7 +133,8 @@
                 <property name="vscrollbar-policy">never</property>
                 <property name="hexpand">true</property>
                 <property name="width-request">300</property>
-                <property name="height-request">210</property>
+                <property name="height-request">250</property>
+                <property name="vexpand">false</property>
                 <style>
                   <class name="rounded-card"/>
                 </style>
@@ -277,6 +280,11 @@
                             <property name="label">Upgrade All</property>
                           </object>
                         </child>
+                        <child>
+                          <object class="GtkButton" id="ArchNewsButton">
+                            <property name="label">View News</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
@@ -285,9 +293,10 @@
             </child>
             <child>
               <object class="GtkFrame">
-                <property name="height-request">210</property>
-                <property name="width-request">300</property>
                 <property name="hexpand">true</property>
+                <property name="width-request">300</property>
+                <property name="height-request">250</property>
+                <property name="vexpand">false</property>
                 <style>
                   <class name="rounded-card"/>
                 </style>
@@ -295,14 +304,13 @@
                   <object class="GtkBox">
                     <property name="orientation">vertical</property>
                     <property name="spacing">5</property>
-                    <property name="width-request">200</property>
                     <property name="margin-bottom">10</property>
                     <property name="margin-end">10</property>
                     <property name="margin-start">10</property>
                     <property name="margin-top">10</property>
                     <child>
                       <object class="GtkLabel">
-                        <property name="label">Arch News</property>
+                        <property name="label">Available Updates</property>
                         <property name="xalign">0</property>
                         <style>
                           <class name="title-2"/>
@@ -310,38 +318,11 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkBox" id="ArchNewsContentBox">
-                        <property name="orientation">vertical</property>
-                        <property name="vexpand">false</property>
-                        <property name="valign">center</property>
-                        <property name="spacing">8</property>
-                        <property name="width-request">200</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkBox">
-                        <property name="orientation">horizontal</property>
-                        <property name="halign">center</property>
-                        <property name="spacing">8</property>
-                        <property name="margin-top">8</property>
+                      <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
                         <child>
-                          <object class="GtkButton" id="ArchNewsPrevButton">
-                            <property name="icon-name">go-previous-symbolic</property>
-                            <property name="sensitive">false</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="ArchNewsPageLabel">
-                            <property name="label">0 / 0</property>
-                            <style>
-                              <class name="dim-label"/>
-                            </style>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="ArchNewsNextButton">
-                            <property name="icon-name">go-next-symbolic</property>
-                            <property name="sensitive">false</property>
+                          <object class="GtkListBox" id="UpdatesListBox">
+                            <property name="selection-mode">none</property>
                           </object>
                         </child>
                       </object>
@@ -355,69 +336,65 @@
       </object>
     </property>
     <child type="overlay">
-      <object class="GtkRevealer" id="UpdatesRevealer">
-        <property name="transition-type">slide-left</property>
-        <property name="transition-duration">300</property>
-        <property name="halign">end</property>
-        <property name="valign">fill</property>
-        <property name="margin-end">24</property>
-        <property name="reveal-child">false</property>
+      <object class="GtkBox" id="ArchNewsOverlay">
+        <property name="visible">false</property>
+        <property name="hexpand">true</property>
+        <property name="vexpand">true</property>
+        <property name="margin-bottom">40</property>
+        <property name="margin-end">40</property>
+        <property name="margin-start">40</property>
+        <property name="margin-top">40</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">10</property>
+        <style>
+          <class name="rounded-card"/>
+          <class name="view"/>
+        </style>
         <child>
-          <object class="GtkFrame">
-            <style>
-              <class name="rounded-card"/>
-            </style>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
             <child>
-              <object class="GtkBox" id="UpdatesPanelBox">
-                <property name="orientation">vertical</property>
-                <property name="spacing">5</property>
-                <property name="width-request">350</property>
-                <property name="margin-bottom">10</property>
-                <property name="margin-end">10</property>
+              <object class="GtkLabel">
+                <property name="label">Arch Linux News</property>
+                <property name="hexpand">true</property>
+                <property name="xalign">0</property>
                 <property name="margin-start">10</property>
                 <property name="margin-top">10</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="label">Available Updates</property>
-                    <style>
-                      <class name="title-3"/>
-                    </style>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkScrolledWindow">
-                    <property name="vexpand">true</property>
-                    <child>
-                      <object class="GtkListBox" id="UpdatesListBox">
-                        <property name="selection-mode">none</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
+                <style>
+                  <class name="title-1"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="CloseArchNewsButton">
+                <property name="icon-name">window-close-symbolic</property>
+                <property name="margin-end">10</property>
+                <property name="margin-top">10</property>
+                <style>
+                  <class name="flat"/>
+                </style>
               </object>
             </child>
           </object>
         </child>
-      </object>
-    </child>
-    <child type="overlay">
-      <object class="GtkToggleButton" id="ShowUpdatesButton">
-        <property name="halign">end</property>
-        <property name="valign">center</property>
-        <property name="width-request">24</property>
-        <property name="vexpand">true</property>
-        <property name="has-frame">false</property>
-        <property name="opacity">0.5</property>
-        <property name="tooltip-text">Toggle Available Updates</property>
         <child>
-          <object class="GtkImage" id="ShowUpdatesArrow">
-            <property name="icon-name">pan-start-symbolic</property>
-            <property name="pixel-size">24</property>
+          <object class="GtkScrolledWindow">
+            <property name="vexpand">true</property>
+            <property name="hscrollbar-policy">never</property>
+            <child>
+              <object class="GtkListBox" id="ArchNewsListBox">
+                <property name="selection-mode">none</property>
+                <property name="margin-bottom">10</property>
+                <property name="margin-end">10</property>
+                <property name="margin-start">10</property>
+                <property name="margin-top">10</property>
+                <style>
+                  <class name="rich-list"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
-        <style>
-          <class name="osd"/>
-        </style>
       </object>
     </child>
   </object>

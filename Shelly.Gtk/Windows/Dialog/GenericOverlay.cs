@@ -5,7 +5,7 @@ namespace Shelly.Gtk.Windows.Dialog;
 
 public static class GenericOverlay
 {
-    public static void ShowGenericOverlay(Overlay parentOverlay, Widget content, GenericDialogEventArgs e)
+    public static void ShowGenericOverlay(Overlay parentOverlay, Widget content, GenericDialogEventArgs e, int width = 400, int height = -1)
     {
         var backdrop = new Box();
         backdrop.SetOrientation(Orientation.Horizontal);
@@ -20,7 +20,7 @@ public static class GenericOverlay
         
         baseBox.SetHalign(Align.Center);
         baseBox.SetValign(Align.Center);
-        baseBox.SetSizeRequest(400, -1);
+        baseBox.SetSizeRequest(width, height);
         baseBox.SetMarginTop(20);
         baseBox.SetMarginBottom(20);
         baseBox.SetMarginStart(20);

@@ -1,10 +1,11 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Shelly.Gtk.UiModels;
 
 namespace Shelly.Gtk.Services;
 
 
-public class ArchNewsService : IArchNewsService
+public partial class ArchNewsService : IArchNewsService
 {
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
     private CachedRssModel? _cache;
@@ -27,7 +28,7 @@ public class ArchNewsService : IArchNewsService
                 {
                     Title = item.Element("title")?.Value,
                     Link = item.Element("link")?.Value,
-                    Description = item.Element("description")?.Value,
+                    Description = ArchNewsRegex().Replace(item.Element("description")?.Value ?? "", string.Empty),
                     PubDate = item.Element("pubDate")?.Value
                 })
                 .ToList();
@@ -46,4 +47,7 @@ public class ArchNewsService : IArchNewsService
             return _cache?.Rss ?? [];
         }
     }
+
+    [GeneratedRegex("<.*?>")]
+    private static partial Regex ArchNewsRegex();
 }

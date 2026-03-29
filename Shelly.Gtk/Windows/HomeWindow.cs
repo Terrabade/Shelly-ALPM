@@ -6,6 +6,7 @@ using Shelly.Gtk.Services.Icons;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
+using Shelly.Gtk.Windows.Dialog;
 
 // ReSharper disable CollectionNeverQueried.Local
 
@@ -24,14 +25,8 @@ public class HomeWindow(
 {
     private Box _box = null!;
     private readonly CancellationTokenSource _cts = new();
-    private Revealer? _updatesRevealer;
     private ListBox? _updatesListBox;
-    private Box? _archNewsContentBox;
-    private Label? _archNewsPageLabel;
-    private Button? _archNewsPrevButton;
-    private Button? _archNewsNextButton;
     private List<RssModel> _archNewsItems = [];
-    private int _archNewsCurrentIndex;
     private Label? _totalAurLabel;
     private Label? _percentAurLabel;
     private Label? _totalPackageLabel;
@@ -39,29 +34,17 @@ public class HomeWindow(
     private Label? _totalFlatpakLabel;
     private Label? _flatpakPercentLabel;
     private ListBox? _operationLogListBox;
+    private Button _archNewsButton = null!;
+    private Overlay _overlay = null!;
 
     public Widget CreateWindow()
     {
         var builder = Builder.NewFromString(ResourceHelper.LoadUiFile("UiFiles/HomeWindow.ui"), -1);
-        var overlay = (Overlay)builder.GetObject("HomeWindowOverlay")!;
+        _overlay = (Overlay)builder.GetObject("HomeWindowOverlay")!;
         _box = (Box)builder.GetObject("HomeWindow")!;
-
-        _updatesRevealer = (Revealer)builder.GetObject("UpdatesRevealer")!;
+        
         _updatesListBox = (ListBox)builder.GetObject("UpdatesListBox")!;
-        var showUpdatesButton = (ToggleButton)builder.GetObject("ShowUpdatesButton")!;
-
-        var arrowImage = (Image)showUpdatesButton.GetFirstChild()!;
-        showUpdatesButton.OnToggled += (sender, args) =>
-        {
-            _updatesRevealer.RevealChild = showUpdatesButton.Active;
-            arrowImage.SetFromIconName(showUpdatesButton.Active
-                ? "pan-end-symbolic"
-                : "pan-start-symbolic");
-            if (showUpdatesButton.Active && _updatesListBox is not null)
-            {
-                _ = LoadUpdatesPanel(_updatesListBox, _cts.Token);
-            }
-        };
+        _archNewsButton = (Button)builder.GetObject("ArchNewsButton")!;
 
         var homeSearchEntry = (SearchEntry)builder.GetObject("HomeSearchEntry")!;
         var metaSearchContainer = (Box)builder.GetObject("MetaSearchContainer")!;
@@ -128,21 +111,100 @@ public class HomeWindow(
                 return false;
             });
         };
-
-        _archNewsContentBox = (Box)builder.GetObject("ArchNewsContentBox")!;
-        _archNewsPageLabel = (Label)builder.GetObject("ArchNewsPageLabel")!;
-        _archNewsPrevButton = (Button)builder.GetObject("ArchNewsPrevButton")!;
-        _archNewsNextButton = (Button)builder.GetObject("ArchNewsNextButton")!;
-
-        _archNewsPrevButton.OnClicked += (_, _) => ShowArchNewsItem(_archNewsCurrentIndex - 1);
-        _archNewsNextButton.OnClicked += (_, _) => ShowArchNewsItem(_archNewsCurrentIndex + 1);
-
-        _ = LoadArchNews(_cts.Token);
+        
 
         _operationLogListBox = (ListBox)builder.GetObject("OperationLogListBox")!;
-        _ = LoadOperationLog(_cts.Token);
+        _operationLogListBox.OnRealize += (sender, args) => { _ = LoadOperationLog(_cts.Token); };
 
-        return overlay;
+        _archNewsButton.OnClicked += (_, _) => OpenArchNewsOverlay();
+        _archNewsButton.OnRealize += (sender, args) => { _ = LoadArchNews(_cts.Token); };
+
+        _ = LoadUpdatesPanel(_updatesListBox!, _cts.Token);
+        
+        return _overlay;
+    }
+
+    private async void OpenArchNewsOverlay()
+    {
+        if (_archNewsItems.Count == 0)
+        {
+            await LoadArchNews(_cts.Token);
+        }
+
+        var container = new Box();
+        container.SetOrientation(Orientation.Vertical);
+        container.SetSpacing(10);
+        container.SetMarginBottom(10);
+        container.SetMarginEnd(10);
+        container.SetMarginStart(10);
+        container.SetMarginTop(10);
+
+        var titleLabel = Label.New("Arch Linux News");
+        titleLabel.AddCssClass("title-1");
+        titleLabel.Xalign = 0;
+        container.Append(titleLabel);
+
+        var listBox = new ListBox();
+        listBox.SetSelectionMode(SelectionMode.None);
+        listBox.AddCssClass("rich-list");
+
+        var scrolledWindow = new ScrolledWindow();
+        scrolledWindow.SetVexpand(true);
+        scrolledWindow.HscrollbarPolicy = PolicyType.Never;
+        scrolledWindow.SetChild(listBox);
+        container.Append(scrolledWindow);
+
+        var args = new GenericDialogEventArgs(container);
+        GenericOverlay.ShowGenericOverlay(_overlay, container, args, 700, 500);
+
+        if (_archNewsItems.Count == 0)
+        {
+            var placeholder = Label.New("No news available");
+            placeholder.AddCssClass("dim-label");
+            placeholder.Halign = Align.Center;
+            placeholder.MarginTop = 20;
+            listBox.Append(placeholder);
+        }
+        else
+        {
+            foreach (var item in _archNewsItems)
+            {
+                var row = new ListBoxRow();
+                var vbox = Box.New(Orientation.Vertical, 5);
+                vbox.MarginStart = 10;
+                vbox.MarginEnd = 10;
+                vbox.MarginTop = 10;
+                vbox.MarginBottom = 10;
+
+                var newsTitle = Label.New(item.Title);
+                newsTitle.AddCssClass("title-4");
+                newsTitle.Xalign = 0;
+                newsTitle.Wrap = true;
+                vbox.Append(newsTitle);
+
+                if (!string.IsNullOrEmpty(item.PubDate))
+                {
+                    var dateLabel = Label.New(item.PubDate);
+                    dateLabel.AddCssClass("caption");
+                    dateLabel.AddCssClass("dim-label");
+                    dateLabel.Xalign = 0;
+                    vbox.Append(dateLabel);
+                }
+
+                if (!string.IsNullOrEmpty(item.Description))
+                {
+                    var descLabel = Label.New(item.Description);
+                    descLabel.Xalign = 0;
+                    descLabel.Wrap = true;
+                    descLabel.Lines = 3;
+                    descLabel.Ellipsize = Pango.EllipsizeMode.End;
+                    vbox.Append(descLabel);
+                }
+
+                row.SetChild(vbox);
+                listBox.Append(row);
+            }
+        }
     }
 
     private async Task UpgradeAll()
@@ -237,6 +299,8 @@ public class HomeWindow(
             tasks.Add(LoadUpdatesPanel(_updatesListBox, _cts.Token));
         if (_operationLogListBox is not null)
             tasks.Add(LoadOperationLog(_cts.Token));
+        
+        tasks.Add(LoadArchNews(_cts.Token));
 
         await Task.WhenAll(tasks);
     }
@@ -564,99 +628,12 @@ public class HomeWindow(
             var items = await archNewsService.FetchNewsAsync(ct);
             ct.ThrowIfCancellationRequested();
 
-            GLib.Functions.IdleAdd(0, () =>
-            {
-                _archNewsItems = items.Take(10).ToList();
-                _archNewsCurrentIndex = 0;
-
-                if (_archNewsItems.Count == 0)
-                {
-                    ShowArchNewsPlaceholder("Unable to load Arch News");
-                }
-                else
-                {
-                    ShowArchNewsItem(0);
-                }
-
-                return false;
-            });
+            _archNewsItems = items.Take(10).ToList();
         }
         catch (Exception e)
         {
             Console.WriteLine($"Failed to load Arch News: {e.Message}");
         }
-    }
-
-    private void ShowArchNewsItem(int index)
-    {
-        if (_archNewsContentBox is null || _archNewsItems.Count == 0) return;
-
-        _archNewsCurrentIndex = Math.Clamp(index, 0, _archNewsItems.Count - 1);
-        var item = _archNewsItems[_archNewsCurrentIndex];
-
-        while (_archNewsContentBox.GetFirstChild() is { } child)
-            _archNewsContentBox.Remove(child);
-
-        var titleLabel = Label.New(item.Title);
-        titleLabel.AddCssClass("title-4");
-        titleLabel.SetXalign(0);
-        titleLabel.Wrap = true;
-        titleLabel.MaxWidthChars = 20;
-
-        var dateLabel = Label.New(item.PubDate ?? string.Empty);
-        dateLabel.AddCssClass("caption");
-        dateLabel.AddCssClass("dim-label");
-        dateLabel.SetXalign(0);
-        dateLabel.MaxWidthChars = 20;
-
-        _archNewsContentBox.Append(titleLabel);
-        _archNewsContentBox.Append(dateLabel);
-
-        if (!string.IsNullOrEmpty(item.Link))
-        {
-            var linkButton = new Button();
-            linkButton.SetLabel("Read more...");
-            linkButton.AddCssClass("flat");
-            linkButton.Halign = Align.Start;
-            var link = item.Link;
-            linkButton.OnClicked += (_, _) =>
-            {
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = link,
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to open link: {ex.Message}");
-                }
-            };
-            _archNewsContentBox.Append(linkButton);
-        }
-
-        _archNewsPrevButton!.Sensitive = _archNewsCurrentIndex > 0;
-        _archNewsNextButton!.Sensitive = _archNewsCurrentIndex < _archNewsItems.Count - 1;
-        _archNewsPageLabel!.SetText($"{_archNewsCurrentIndex + 1} / {_archNewsItems.Count}");
-    }
-
-    private void ShowArchNewsPlaceholder(string message)
-    {
-        if (_archNewsContentBox is null) return;
-
-        while (_archNewsContentBox.GetFirstChild() is { } child)
-            _archNewsContentBox.Remove(child);
-
-        var label = Label.New(message);
-        label.Halign = Align.Center;
-        label.AddCssClass("dim-label");
-        _archNewsContentBox.Append(label);
-
-        _archNewsPrevButton!.Sensitive = false;
-        _archNewsNextButton!.Sensitive = false;
-        _archNewsPageLabel!.SetText("0 / 0");
     }
 
     private async Task LoadOperationLog(CancellationToken ct)
