@@ -52,7 +52,7 @@
   <object class="GtkApplicationWindow" id="MainWindow">
     <property name="default-height">600</property>
     <property name="default-width">800</property>
-    <property name="title">Shelly GTK</property>
+    <property name="title">Shelly</property>
     <child>
       <object class="GtkOverlay" id="MainOverlay">
         <property name="child">

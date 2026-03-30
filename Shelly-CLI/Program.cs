@@ -43,6 +43,15 @@ public class Program
         // Migrate old UI settings if they exist
         ConfigManager.MigrateFromUiConfig();
 
+        // Open log file for this session (silently skipped if not writable)
+        var logFileWriter = ShellyFileLogger.OpenLogFile();
+        if (logFileWriter != null)
+        {
+            ShellyFileLogger.WriteSessionHeader(logFileWriter, args);
+            Console.SetOut(new ShellyFileLogger(Console.Out, logFileWriter, "OUT"));
+            Console.SetError(new ShellyFileLogger(Console.Error, logFileWriter, "ERR"));
+        }
+
         // Check if running in UI mode (--ui-mode flag passed by Shelly-UI)
         var argsList = args.ToList();
         IsUiMode = argsList.Remove("--ui-mode");
@@ -90,6 +99,7 @@ public class Program
                 .WithExample("sync");
 
             config.AddCommand<ListInstalledCommand>("list-installed")
+                .WithAlias("li")
                 .WithDescription("List all installed packages")
                 .WithExample("list-installed")
                 .WithExample("list-installed", "--sort", "name")
@@ -387,6 +397,14 @@ public class Program
             });
         });
 
-        return app.Run(args);
+        var result = app.Run(args);
+
+        if (logFileWriter != null)
+        {
+            ShellyFileLogger.WriteSessionFooter(logFileWriter, result);
+            logFileWriter.Dispose();
+        }
+
+        return result;
     }
 }

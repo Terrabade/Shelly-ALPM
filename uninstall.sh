@@ -53,8 +53,13 @@ if [ -f /usr/lib/libHarfBuzzSharp.so ]; then
 fi
 
 # Remove desktop entry
-if [ -f /usr/share/applications/shelly.desktop ]; then
+if [ -f /usr/share/applications/com.shellyorg.shelly.desktop ]; then
     echo "Removing desktop entry"
+    rm -f /usr/share/applications/com.shellyorg.shelly.desktop
+fi
+# Remove old desktop entry
+if [ -f /usr/share/applications/shelly.desktop ]; then
+    echo "Removing broken pre-GTK desktop entry"
     rm -f /usr/share/applications/shelly.desktop
 fi
 

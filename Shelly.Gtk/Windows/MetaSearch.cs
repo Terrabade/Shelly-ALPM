@@ -41,6 +41,9 @@ public class MetaSearch(
     private Dictionary<ColumnViewCell, EventHandler> _checkBinding = [];
     private readonly List<MetaPackageGObject> _packageGObjectRefs = [];
 
+    private Stack _searchStack = null!;
+    private Spinner _searchSpinner = null!;
+
     public Widget CreateWindow() => CreateWindow(null);
 
     public Widget CreateWindow(string? initialQuery)
@@ -73,6 +76,29 @@ public class MetaSearch(
 
         _installButton.OnClicked += (_, _) => { _ = InstallSelectedAsync(); };
         _removeButton.OnClicked += (_, _) => { _ = RemoveSelectedAsync(); };
+
+        // Create spinner/stack for loading state
+        var spinnerBox = Box.New(Orientation.Vertical, 10);
+        spinnerBox.SetValign(Align.Center);
+        spinnerBox.SetHalign(Align.Center);
+        spinnerBox.SetVexpand(true);
+        _searchSpinner = Spinner.New();
+        _searchSpinner.SetSizeRequest(48, 48);
+        var searchingLabel = Label.New("Searching...");
+        spinnerBox.Append(_searchSpinner);
+        spinnerBox.Append(searchingLabel);
+
+        _searchStack = Stack.New();
+        _searchStack.SetVexpand(true);
+        _searchStack.AddNamed(spinnerBox, "loading");
+
+        // Move the ScrolledWindow (parent of _columnView) into the stack
+        var scrolledWindow = (Widget)_columnView.GetParent()!;
+        _box.Remove(scrolledWindow);
+        _searchStack.AddNamed(scrolledWindow, "results");
+        _box.Append(_searchStack);
+
+        _searchStack.SetVisibleChildName("results");
 
         if (!string.IsNullOrEmpty(_initialQuery))
         {
@@ -206,81 +232,124 @@ public class MetaSearch(
             return;
         }
 
-        List<Task<List<MetaPackageModel>>> groupList = [];
-
-        var standardTask = Task.Run(async () =>
-        {
-            var standardInstalled = await privilegedOperationService.GetInstalledPackagesAsync().ContinueWith(x =>
-                x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description,
-                    PackageType.STANDARD, y.Description, y.Repository, true)).ToList());
-            var standardAvailable = await privilegedOperationService.SearchPackagesAsync(_initialQuery)
-                .ContinueWith(x =>
-                    x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description,
-                        PackageType.STANDARD, y.Description, y.Repository,
-                        standardInstalled.Any(z => z.Name == y.Name))).ToList());
-            return standardAvailable;
-        });
-        groupList.Add(standardTask);
-
-        Task<List<MetaPackageModel>>? flatpakGroup = null;
-        if (configService.LoadConfig().FlatPackEnabled)
-        {
-            flatpakGroup = Task.Run(async () =>
-            {
-                var flatPakInstalled = await unprivilegedOperationService.ListFlatpakPackages().ContinueWith(x =>
-                    x.Result.Select(y => new MetaPackageModel(y.Id, y.Name, y.Version, y.Description,
-                        PackageType.FLATPAK, y.Summary, "Flathub", true)).ToList());
-                var flatpakAvailable = await unprivilegedOperationService.SearchFlathubAsync(_initialQuery)
-                    .ContinueWith(x =>
-                        x.Result.Select(y => new MetaPackageModel(y.Id, y.Name, y.Version, y.Description,
-                            PackageType.FLATPAK, y.Description, y.Id,
-                            flatPakInstalled.Any(z => z.Name == y.Name))).ToList());
-
-                return flatpakAvailable;
-            });
-            groupList.Add(flatpakGroup);
-        }
-
-        Task<List<MetaPackageModel>>? aurGroup = null;
-        if (configService.LoadConfig().AurEnabled)
-        {
-            aurGroup = Task.Run(async () =>
-            {
-                var aurInstalled = await privilegedOperationService.GetAurInstalledPackagesAsync()
-                    .ContinueWith(x =>
-                        x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description ?? "",
-                            PackageType.AUR, y.Url ?? "", "AUR", true)).ToList());
-                var aurAvailable = await privilegedOperationService.SearchAurPackagesAsync(_initialQuery)
-                    .ContinueWith(x => x.Result.Select(y =>
-                        new MetaPackageModel(y.Name, y.Name, y.Version, y.Description ?? "", PackageType.AUR,
-                            y.Url ?? "", "AUR", aurInstalled.Any(z => z.Name == y.Name))).ToList());
-                return aurAvailable;
-            });
-            groupList.Add(aurGroup);
-        }
-
-        List<MetaPackageModel> models = [];
-        await foreach (var completedTask in Task.WhenEach(groupList))
-        {
-            var metaEnumerable = await completedTask;
-            if (metaEnumerable.Count != 0)
-            {
-                models.AddRange(metaEnumerable.ToList());
-            }
-        }
-
         GLib.Functions.IdleAdd(0, () =>
         {
-            _listStore.RemoveAll();
-            _packageGObjectRefs.Clear();
-            foreach (var pkgObj in models.Select(model => new MetaPackageGObject { Package = model }))
-            {
-                _packageGObjectRefs.Add(pkgObj);
-                _listStore.Append(pkgObj);
-            }
-
+            _searchSpinner.Start();
+            _searchStack.SetVisibleChildName("loading");
             return false;
         });
+
+        try
+        {
+            List<Task<List<MetaPackageModel>>> groupList = [];
+
+            var standardTask = Task.Run(async () =>
+            {
+                var standardInstalled = await privilegedOperationService.GetInstalledPackagesAsync().ContinueWith(x =>
+                    x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description,
+                        PackageType.STANDARD, y.Description, y.Repository, true)).ToList());
+                var standardAvailable = await privilegedOperationService.SearchPackagesAsync(_initialQuery)
+                    .ContinueWith(x =>
+                        x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description,
+                            PackageType.STANDARD, y.Description, y.Repository,
+                            standardInstalled.Any(z => z.Name == y.Name))).ToList());
+                return standardAvailable;
+            });
+            groupList.Add(standardTask);
+
+            Task<List<MetaPackageModel>>? flatpakGroup = null;
+            if (configService.LoadConfig().FlatPackEnabled)
+            {
+                flatpakGroup = Task.Run(async () =>
+                {
+                    // Sync appstream cache (with timeout so it doesn't block forever)
+                    var syncTask = unprivilegedOperationService.FlatpakSyncRemoteAppstream();
+                    await Task.WhenAny(syncTask, Task.Delay(TimeSpan.FromSeconds(5), _cts.Token));
+
+                    // Get installed list for marking installed status
+                    var flatPakInstalled = await unprivilegedOperationService.ListFlatpakPackages().ContinueWith(x =>
+                        x.Result.Select(y => y.Id).ToHashSet());
+
+                    // Load all appstream apps and filter by query
+                    var allApps = await unprivilegedOperationService.ListAppstreamFlatpak(_cts.Token);
+                    var query = _initialQuery!;
+                    var filtered = allApps
+                        .Where(app => app.Type != "addon")
+                        .Where(app =>
+                            app.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                            app.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                            app.Id.Contains(query, StringComparison.OrdinalIgnoreCase))
+                        .Take(100)
+                        .Select(app => new MetaPackageModel(
+                            app.Id,
+                            app.Name,
+                            app.Releases.FirstOrDefault()?.Version ?? string.Empty,
+                            app.Description,
+                            PackageType.FLATPAK,
+                            app.Summary,
+                            app.Remotes.FirstOrDefault()?.Name ?? "Flatpak",
+                            flatPakInstalled.Contains(app.Id)))
+                        .ToList();
+
+                    return filtered;
+                });
+                groupList.Add(flatpakGroup);
+            }
+
+            Task<List<MetaPackageModel>>? aurGroup = null;
+            if (configService.LoadConfig().AurEnabled)
+            {
+                aurGroup = Task.Run(async () =>
+                {
+                    var aurInstalled = await privilegedOperationService.GetAurInstalledPackagesAsync()
+                        .ContinueWith(x =>
+                            x.Result.Select(y => new MetaPackageModel(y.Name, y.Name, y.Version, y.Description ?? "",
+                                PackageType.AUR, y.Url ?? "", "AUR", true)).ToList());
+                    var aurAvailable = await privilegedOperationService.SearchAurPackagesAsync(_initialQuery)
+                        .ContinueWith(x => x.Result.Select(y =>
+                            new MetaPackageModel(y.Name, y.Name, y.Version, y.Description ?? "", PackageType.AUR,
+                                y.Url ?? "", "AUR", aurInstalled.Any(z => z.Name == y.Name))).ToList());
+                    return aurAvailable;
+                });
+                groupList.Add(aurGroup);
+            }
+
+            List<MetaPackageModel> models = [];
+            await foreach (var completedTask in Task.WhenEach(groupList))
+            {
+                var metaEnumerable = await completedTask;
+                if (metaEnumerable.Count != 0)
+                {
+                    models.AddRange(metaEnumerable.ToList());
+                }
+            }
+
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                _listStore.RemoveAll();
+                _packageGObjectRefs.Clear();
+                foreach (var pkgObj in models.Select(model => new MetaPackageGObject { Package = model }))
+                {
+                    _packageGObjectRefs.Add(pkgObj);
+                    _listStore.Append(pkgObj);
+                }
+
+                return false;
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Search error: {ex.Message}");
+        }
+        finally
+        {
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                _searchSpinner.Stop();
+                _searchStack.SetVisibleChildName("results");
+                return false;
+            });
+        }
     }
 
     private async Task InstallSelectedAsync()
@@ -312,11 +381,9 @@ public class MetaSearch(
             if (aur.Count > 0) await privilegedOperationService.InstallAurPackagesAsync(aur);
             if (flatpak.Count > 0)
             {
-                foreach (var pkg in flatpak)
+                foreach (var pkg in selected.Where(x => x.PackageType == PackageType.FLATPAK))
                 {
-                    //TODO: This evnetually needs to work with everything else but this page only works with flathub atm
-                    //This can be a future improvment we can make on this page...
-                    await unprivilegedOperationService.InstallFlatpakPackage(pkg, false, "flathub", "stable");
+                    await unprivilegedOperationService.InstallFlatpakPackage(pkg.Id, false, pkg.Repository, "stable");
                 }
             }
         }

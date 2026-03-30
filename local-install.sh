@@ -85,7 +85,7 @@ cp "$INSTALL_DIR/shellylogo.png" /usr/share/icons/hicolor/256x256/apps/shelly.pn
 
 # Create desktop entry
 echo "Creating desktop entry"
-cat <<EOF > /usr/share/applications/shelly.desktop
+cat <<EOF > /usr/share/applications/com.shellyorg.shelly.desktop
 [Desktop Entry]
 Name=Shelly
 Comment=A Modern Arch Package Manager
