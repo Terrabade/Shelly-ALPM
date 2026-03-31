@@ -118,7 +118,7 @@ public class CredentialManager : ICredentialManager
                 return true;
             }
 
-            if (IsAccountPasswordless(Environment.UserName))
+            if (IsAccountPasswordless(Environment.UserName) || IsSudoPasswordless() || IsYubiKeyConfigured())
             {
                 _isValidated = true;
                 _storedPassword = "NOPASSWORD67";
@@ -251,6 +251,21 @@ public class CredentialManager : ICredentialManager
         }
         catch { return false; }
     }
+    private bool IsYubiKeyConfigured()
+    {
+        try
+        {
+            var pamSudoPath = "/etc/pam.d/sudo";
+            if (System.IO.File.Exists(pamSudoPath))
+            {
+                var content = System.IO.File.ReadAllText(pamSudoPath);
+                return content.Contains("pam_u2f.so");
+            }
+        }
+        catch { /* ignore */ }
+        return false;
+    }
+
     private bool IsAccountPasswordless(string username)
     {
         try
