@@ -14,7 +14,7 @@ public interface IUnprivilegedOperationService
     Task<List<AppstreamApp>> ListAppstreamFlatpak(CancellationToken ct = default);
 
     Task<UnprivilegedOperationResult> FlatpakUpgrade();
-    
+
     Task<List<FlatpakRemoteDto>> FlatpakListRemotes();
 
     Task<UnprivilegedOperationResult> UpdateFlatpakPackage(string package);
@@ -25,11 +25,13 @@ public interface IUnprivilegedOperationService
         string remote, string branch, bool isRuntime = false);
 
     Task<UnprivilegedOperationResult> FlatpakSyncRemoteAppstream();
-    
+
     Task<UnprivilegedOperationResult> FlatpakRemoveRemote(string remoteName, string scope);
-    
+
     Task<UnprivilegedOperationResult> FlatpakAddRemote(string remoteName, string scope, string url);
     
+    Task<UnprivilegedOperationResult> RunFlatpakName(string name);
+
     Task<UnprivilegedOperationResult> FlatpakInsallFromRef(string path, string scope);
 
     Task<SyncModel> CheckForApplicationUpdates();
@@ -39,8 +41,8 @@ public interface IUnprivilegedOperationService
     Task<UnprivilegedOperationResult> ExportSyncFile(string filePath, string name);
 
     Task<List<FlatpakPackageDto>> SearchFlathubAsync(string query);
-    
-    Task<ulong>  GetFlatpakAppDataAsync(string remote, string app, string arch);
+
+    Task<ulong> GetFlatpakAppDataAsync(string remote, string app, string arch);
 }
 
 public class UnprivilegedOperationResult

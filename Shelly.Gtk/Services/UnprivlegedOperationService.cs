@@ -238,6 +238,11 @@ public class UnprivilegedOperationService : IUnprivilegedOperationService
             "true");
     }
 
+    public async Task<UnprivilegedOperationResult> RunFlatpakName(string name)
+    {
+        return await ExecuteUnprivilegedCommandAsync("Remove Remote", "flatpak run", name);
+    }
+
     public async Task<UnprivilegedOperationResult> FlatpakAddRemote(string remoteName, string scope, string url)
     {
         if (scope == "user")

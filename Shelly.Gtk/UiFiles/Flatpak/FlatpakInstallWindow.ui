@@ -109,6 +109,15 @@
                                                 </style>
                                             </object>
                                         </child>
+                                        <child>
+                                            <object class="GtkButton" id="overlay_run_button">
+                                                <property name="visible">false</property> 
+                                                <property name="label">Run Flatpak</property>
+                                                <style>
+                                                    <class name="suggested-action"/>
+                                                </style>
+                                            </object>
+                                        </child>
                                     </object>
                                 </child>
                                 <child>
