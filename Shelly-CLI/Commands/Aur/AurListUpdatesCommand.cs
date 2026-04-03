@@ -20,7 +20,7 @@ public class AurListUpdatesCommand : AsyncCommand<ListSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize();
+            await manager.Initialize(showHiddenPackages: settings.ShowHidden);
 
             var updates = manager.GetPackagesNeedingUpdate().GetAwaiter().GetResult();
 
@@ -104,7 +104,7 @@ public class AurListUpdatesCommand : AsyncCommand<ListSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize();
+            await manager.Initialize(showHiddenPackages: settings.ShowHidden);
 
             var updates = manager.GetPackagesNeedingUpdate().GetAwaiter().GetResult();
 

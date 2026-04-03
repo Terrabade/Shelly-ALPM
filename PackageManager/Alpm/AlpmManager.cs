@@ -818,7 +818,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             }
         }
 
-        if (_showHiddenPackages)
+        if (!_showHiddenPackages)
         {
             foreignPackages.RemoveAll(x => _config.IgnorePkg.Contains(x.Name));
         }
@@ -883,7 +883,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             }
         }
 
-        updates.RemoveAll(p => _config.IgnorePkg.Contains(p.Name));
+        if (!_showHiddenPackages)
+        {
+            updates.RemoveAll(p => _config.IgnorePkg.Contains(p.Name));
+        }
 
         return updates;
     }

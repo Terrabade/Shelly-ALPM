@@ -19,7 +19,7 @@ public class AurListInstalledCommand : AsyncCommand<ListSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize();
+            await manager.Initialize(showHiddenPackages: settings.ShowHidden);
 
             var packages = await manager.GetInstalledPackages();
 
@@ -94,7 +94,7 @@ public class AurListInstalledCommand : AsyncCommand<ListSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize();
+            await manager.Initialize(showHiddenPackages: settings.ShowHidden);
 
             var packages = await manager.GetInstalledPackages();
 

@@ -26,5 +26,10 @@ public class ListSettings : DefaultSettings
     [CommandOption("-t|--take <TAKE>")]
     [Description("The number of packages to render per page")]
     public int Take { get; set; } = 100;
-    
+
+    [CommandOption("--show-hidden")]
+    [Description("Show packages that are in the IgnorePkg list in pacman.conf")]
+    [DefaultValue(false)]
+    public bool ShowHidden { get; init; } = false;
+
 }

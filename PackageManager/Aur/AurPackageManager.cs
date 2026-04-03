@@ -61,10 +61,10 @@ public class AurPackageManager(string? configPath = null)
     public event EventHandler<AlpmProgressEventArgs>? Progress;
 
     public async Task Initialize(bool root = false, bool useTempPath = false, bool useChroot = false,
-        string chrootPath = "/var/lib/shelly/chroot", string tempPath = "")
+        string chrootPath = "/var/lib/shelly/chroot", string tempPath = "", bool showHiddenPackages = false)
     {
         _alpm = configPath is null ? new AlpmManager() : new AlpmManager(configPath);
-        _alpm.Initialize(root, useTempPath: useTempPath, tempPath: tempPath);
+        _alpm.Initialize(root, useTempPath: useTempPath, tempPath: tempPath, showHiddenPackages: showHiddenPackages);
         _alpm.Question += (sender, args) => Question?.Invoke(this, args);
         _alpm.Progress += (sender, args) => Progress?.Invoke(this, args);
         _aurSearchManager = new AurSearchManager(_httpClient);
