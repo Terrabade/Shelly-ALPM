@@ -1070,17 +1070,69 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         var localDbPtr = GetLocalDb(_handle);
         foreach (var packageName in packageNames)
         {
-            // Find the package in sync databases
+            IntPtr pkgPtr = IntPtr.Zero;
+            List<IntPtr> groupPkgs = null;
 
-            var pkgPtr = DbGetPkg(localDbPtr, packageName);
+            // 1. Try exact package name in local db
+            pkgPtr = DbGetPkg(localDbPtr, packageName);
 
+            // 2. If not found, try as a group in local db
             if (pkgPtr == IntPtr.Zero)
             {
-                Console.Error.WriteLine($"[ALPM_ERROR]Package '{packageName}' not found in local database.");
-                throw new Exception($"Package '{packageName}' not found in any sync database.");
+                var groupCachePtr = DbGetGroupCache(localDbPtr);
+                var groupNode = groupCachePtr;
+                while (groupNode != IntPtr.Zero)
+                {
+                    var groupNodeData = Marshal.PtrToStructure<AlpmList>(groupNode);
+                    if (groupNodeData.Data != IntPtr.Zero)
+                    {
+                        var group = Marshal.PtrToStructure<AlpmPackageGroup>(groupNodeData.Data);
+                        var groupName = Marshal.PtrToStringUTF8(group.Name);
+                        try
+                        {
+                            if (groupName!.Equals(packageName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                groupPkgs = new List<IntPtr>();
+                                var pkgNode = group.Packages;
+                                while (pkgNode != IntPtr.Zero)
+                                {
+                                    var pkg = Marshal.PtrToStructure<AlpmList>(pkgNode);
+                                    if (pkg.Data != IntPtr.Zero)
+                                    {
+                                        groupPkgs.Add(pkg.Data);
+                                    }
+
+                                    pkgNode = pkg.Next;
+                                }
+
+                                break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.Error.WriteLine($"[DEBUG_LOG] Exception: {ex.Message}");
+                        }
+                    }
+
+                    groupNode = groupNodeData.Next;
+                }
             }
 
-            pkgPtrs.Add(pkgPtr);
+            // 3. If still not found, try find_satisfier on local db
+            if (pkgPtr == IntPtr.Zero && groupPkgs == null)
+            {
+                var pkgCache = DbGetPkgCache(localDbPtr);
+                pkgPtr = PkgFindSatisfier(pkgCache, packageName);
+            }
+
+            if (pkgPtr == IntPtr.Zero && groupPkgs == null)
+            {
+                Console.Error.WriteLine($"[ALPM_ERROR]Package '{packageName}' not found in local database.");
+                throw new Exception($"Package '{packageName}' not found in local database.");
+            }
+
+            if (pkgPtr != IntPtr.Zero) pkgPtrs.Add(pkgPtr);
+            if (groupPkgs != null) pkgPtrs.AddRange(groupPkgs);
         }
 
         if (pkgPtrs.Count == 0) return Task.CompletedTask;
