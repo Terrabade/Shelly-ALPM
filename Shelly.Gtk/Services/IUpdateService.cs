@@ -4,6 +4,5 @@ namespace Shelly.Gtk.Services;
 
 public interface IUpdateService
 {
-    Task<bool> CheckForUpdateAsync();
-    Task DownloadAndInstallUpdateAsync();
+    public Task<string> PullReleaseNotesAsync();
 }

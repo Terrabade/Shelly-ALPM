@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<!DOCTYPE cambalache-project SYSTEM "cambalache-project.dtd">
-<!-- Created with Cambalache 0.96.3 -->
-<cambalache-project version="0.96.0" target_tk="gtk-4.0">
-  <ui filename="shelly.ui" sha256="4b8bf6b408cb5e243ef6abb75c2e0265b3df237e21770f2823f5883c635a8426"/>
-  <ui filename="MainWindow" sha256="4831a22769b8e83e1caa7213df48b67f0663ddc4336b1d043d6b35fe1b362081"/>
-</cambalache-project>

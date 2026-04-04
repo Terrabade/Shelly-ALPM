@@ -235,7 +235,7 @@ sealed class Program
             {
                 if (!configService.LoadConfig().NewInstall)
                 {
-                    var notes = new GitHubUpdateService(credentialManager).PullReleaseNotesAsync();
+                    var notes = new GitHubUpdateService().PullReleaseNotesAsync();
                     ReleaseNotesDialog.ShowReleaseNotesDialog(mainOverlay, notes.Result);
                     
                     var config = configService.LoadConfig();
