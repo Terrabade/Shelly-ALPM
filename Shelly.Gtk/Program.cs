@@ -191,8 +191,8 @@ sealed class Program
                     aurBox.Visible = updatedConfig.AurEnabled;
                     flatpakBox.Visible = updatedConfig.FlatPackEnabled;
 
-                    horizontalActionBar.Visible = updatedConfig.UseHorizontalMenu;
-                    sidebarBox.Visible = !updatedConfig.UseHorizontalMenu;
+                    horizontalActionBar.Visible = updatedConfig.UseOldMenu;
+                    sidebarBox.Visible = !updatedConfig.UseOldMenu;
 
                     if (mainBuilder.GetObject("AurMenuButton") is MenuButton aurMenuButton)
                         aurMenuButton.Visible = updatedConfig.AurEnabled;
@@ -235,8 +235,8 @@ sealed class Program
             updateFlatpakButton.OnClicked += (_, _) => NavigateTo<FlatpakUpdate>("UpdateFlatpakButton");
             removeFlatpakButton.OnClicked += (_, _) => NavigateTo<FlatpakRemove>("RemoveFlatpakButton");
 
-            horizontalActionBar.Visible = initialConfig.UseHorizontalMenu;
-            sidebarBox.Visible = !initialConfig.UseHorizontalMenu;
+            horizontalActionBar.Visible = initialConfig.UseOldMenu;
+            sidebarBox.Visible = !initialConfig.UseOldMenu;
 
             // Always wire horizontal menu events regardless of initial visibility
             var homeButtonHoriz = (Button)mainBuilder.GetObject("HomeButtonHorizontal")!;

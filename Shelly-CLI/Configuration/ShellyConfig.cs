@@ -20,7 +20,7 @@ public class ShellyConfig
     public double WindowHeight { get; set; } = 600;
     public string DefaultView { get; set; } = "HomeScreen";
     public bool UseKdeTheme { get; set; } = false;
-    public bool UseHorizontalMenu { get; set; } = true;
+    public bool UseOldMenu { get; set; } = false;
     public bool TrayEnabled { get; set; } = true;
     public int TrayCheckIntervalHours { get; set; } = 12;
     public bool NoConfirm { get; set; } = false;
