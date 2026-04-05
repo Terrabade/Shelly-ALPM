@@ -27,7 +27,7 @@ public class ShellyConfig
     
     public bool UseKdeTheme { get; set; } = false;
     
-    public bool UseHorizontalMenu { get; set; } = true;
+    public bool UseOldMenu { get; set; } = false;
 
     public bool TrayEnabled { get; set; } = true;
 

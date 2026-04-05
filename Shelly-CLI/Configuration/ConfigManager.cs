@@ -259,9 +259,13 @@ public static class ConfigManager
                 config.UseKdeTheme = kde.GetBoolean();
             }
 
-            if (root.TryGetProperty("UseHorizontalMenu", out var horizontal))
+            if (root.TryGetProperty("UseOldMenu", out var oldMenu))
             {
-                config.UseHorizontalMenu = horizontal.GetBoolean();
+                config.UseOldMenu = oldMenu.GetBoolean();
+            }
+            else if (root.TryGetProperty("UseHorizontalMenu", out var horizontal))
+            {
+                config.UseOldMenu = horizontal.GetBoolean();
             }
 
             if (root.TryGetProperty("TrayEnabled", out var tray))
