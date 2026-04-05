@@ -38,10 +38,10 @@ public static class PkgbuildParser
             Url = ParseVariable(pkgbuildContent, "url"),
             License = ParseArray(pkgbuildContent, "license"),
             Arch = ParseArray(pkgbuildContent, "arch"),
-            Depends = ParseArray(pkgbuildContent, "depends"),
-            MakeDepends = ParseArray(pkgbuildContent, "makedepends"),
-            CheckDepends = ParseArray(pkgbuildContent, "checkdepends"),
-            OptDepends = ParseArray(pkgbuildContent, "optdepends"),
+            Depends = ResolveVariableReferences(pkgbuildContent, ParseArray(pkgbuildContent, "depends")),
+            MakeDepends = ResolveVariableReferences(pkgbuildContent, ParseArray(pkgbuildContent, "makedepends")),
+            CheckDepends = ResolveVariableReferences(pkgbuildContent, ParseArray(pkgbuildContent, "checkdepends")),
+            OptDepends = ResolveVariableReferences(pkgbuildContent, ParseArray(pkgbuildContent, "optdepends")),
             Provides = ParseArray(pkgbuildContent, "provides"),
             Conflicts = ParseArray(pkgbuildContent, "conflicts"),
             Replaces = ParseArray(pkgbuildContent, "replaces"),
@@ -119,6 +119,26 @@ public static class PkgbuildParser
         }
         
         return result;
+    }
+
+    private static List<string> ResolveVariableReferences(string content, List<string> items)
+    {
+        var resolved = new List<string>();
+        foreach (var item in items)
+        {
+            var varRefMatch = Regex.Match(item, @"^\$\{(\w+)\[@\]\}$");
+            if (varRefMatch.Success)
+            {
+                var referencedVar = varRefMatch.Groups[1].Value;
+                var referencedItems = ParseArray(content, referencedVar);
+                resolved.AddRange(ResolveVariableReferences(content, referencedItems));
+            }
+            else
+            {
+                resolved.Add(item);
+            }
+        }
+        return resolved;
     }
 }
 
