@@ -29,7 +29,7 @@ public class AurUpdateCommand : AsyncCommand<AurPackageSettings>
         {
             manager = new AurPackageManager();
             object renderLock = new();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             manager.PackageProgress += (sender, args) =>
             {
@@ -114,7 +114,7 @@ public class AurUpdateCommand : AsyncCommand<AurPackageSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             manager.PackageProgress += (sender, args) =>
             {

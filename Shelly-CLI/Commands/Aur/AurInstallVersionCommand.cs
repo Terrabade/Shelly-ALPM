@@ -32,7 +32,7 @@ public class AurInstallVersionCommand : AsyncCommand<AurInstallVersionSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             manager.PackageProgress += (sender, args) =>
             {
@@ -87,7 +87,7 @@ public class AurInstallVersionCommand : AsyncCommand<AurInstallVersionSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             manager.PackageProgress += (sender, args) =>
             {

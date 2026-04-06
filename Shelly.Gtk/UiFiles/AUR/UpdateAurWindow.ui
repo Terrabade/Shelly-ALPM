@@ -26,6 +26,12 @@
           </object>
         </child>
         <child>
+          <object class="GtkCheckButton" id="run_checks_check">
+            <property name="label">Run checks</property>
+            <property name="tooltip-text">Run the --check function during package build (installs checkdepends)</property>
+          </object>
+        </child>
+        <child>
           <object class="GtkCheckButton" id="show_hidden_check">
             <property name="halign">start</property>
             <property name="label">Show Hidden</property>

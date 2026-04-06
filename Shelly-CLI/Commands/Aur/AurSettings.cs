@@ -19,6 +19,10 @@ public class AurPackageSettings : CommandSettings
     [CommandOption("--no-confirm")]
     [Description("Proceed without asking for user confirmation")]
     public bool NoConfirm { get; set; }
+
+    [CommandOption("--check")]
+    [Description("Run the check() function during AUR package builds (disabled by default)")]
+    public bool Check { get; set; }
 }
 
 public class AurInstallVersionSettings : CommandSettings
@@ -30,6 +34,10 @@ public class AurInstallVersionSettings : CommandSettings
     [CommandArgument(1, "<commit>")]
     [Description("Git commit hash specifying the exact version to install")]
     public string Commit { get; set; } = string.Empty;
+
+    [CommandOption("--check")]
+    [Description("Run the check() function during AUR package builds (disabled by default)")]
+    public bool Check { get; set; }
 }
 
 public class AurUpgradeSettings : CommandSettings
@@ -37,6 +45,10 @@ public class AurUpgradeSettings : CommandSettings
     [CommandOption("--no-confirm")]
     [Description("Proceed without asking for user confirmation")]
     public bool NoConfirm { get; set; }
+
+    [CommandOption("--check")]
+    [Description("Run the check() function during AUR package builds (disabled by default)")]
+    public bool Check { get; set; }
 }
 
 public class AurRemovePackageSettings : AurPackageSettings

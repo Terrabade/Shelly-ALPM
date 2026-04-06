@@ -197,12 +197,16 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         );
     }
 
-    public async Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false)
+    public async Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false, bool runChecks = false)
     {
         var packageArgs = string.Join(" ", packages);
         if (useChroot)
         {
             packageArgs += " -c";
+        }
+        if (runChecks)
+        {
+            packageArgs += " --check";
         }
 
         return await ExecutePrivilegedWithNoConfirmCheck("Install AUR packages", "aur", "install", packageArgs);
@@ -219,9 +223,13 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         return await ExecutePrivilegedWithNoConfirmCheck("Remove AUR packages", "aur", "remove", packageArgs);
     }
 
-    public async Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages)
+    public async Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages, bool runChecks = false)
     {
         var packageArgs = string.Join(" ", packages);
+        if (runChecks)
+        {
+            packageArgs += " --check";
+        }
         var result = await ExecutePrivilegedWithNoConfirmCheck("Update AUR packages", "aur", "update", packageArgs);
         SendDbusMessage(result);
         return result;

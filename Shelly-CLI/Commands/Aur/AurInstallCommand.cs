@@ -44,7 +44,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
         {
             RootElevator.EnsureRootExectuion();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
             object renderLock = new();
 
             manager.PackageProgress += (sender, args) =>
@@ -140,7 +140,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
                 });
             manager.Dispose();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
             var missingPackages = await GetMissingPackages(manager, packageList);
             if (missingPackages.Count > 0)
             {
@@ -176,7 +176,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
 
             var packageList = settings.Packages.ToList();
 
@@ -222,7 +222,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
             // Recreate manager to get fresh installed package list (avoid stale cache)
             manager.Dispose();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
 
             var missingPackages = await GetMissingPackages(manager, packageList);
             if (missingPackages.Count > 0)

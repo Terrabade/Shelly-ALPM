@@ -18,9 +18,9 @@ public interface IPrivilegedOperationService
     Task<OperationResult> UpgradeAllAsync();
     Task<OperationResult> ForceSyncDatabaseAsync();
     Task<OperationResult> RemoveDbLockAsync();
-    Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false);
+    Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false, bool runChecks = false);
     Task<OperationResult> RemoveAurPackagesAsync(IEnumerable<string> packages, bool isCascade = false);
-    Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages);
+    Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages, bool runChecks = false);
     Task<List<PackageBuild>> GetAurPackageBuild(IEnumerable<string> packages);
     Task<List<AlpmPackageUpdateDto>> GetPackagesNeedingUpdateAsync();
     Task<List<AlpmPackageDto>> GetAvailablePackagesAsync(bool showHidden = false);

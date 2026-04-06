@@ -37,6 +37,7 @@ public class AurUpdate(
     private Button _updateButton = null!;
     private Label _noPackagesLabel = null!;
     private CheckButton _showHiddenCheck = null!;
+    private CheckButton _runChecksCheck = null!;
 
     public Widget CreateWindow()
     {
@@ -55,6 +56,7 @@ public class AurUpdate(
         _versionColumn.Resizable = true;
 
         _updateButton = (Button)builder.GetObject("update_button")!;
+        _runChecksCheck = (CheckButton)builder.GetObject("run_checks_check")!;
         _showHiddenCheck = (CheckButton)builder.GetObject("show_hidden_check")!;
         _noPackagesLabel = (Label)builder.GetObject("no_packages_label")!;
         _noPackagesLabel.Label_ = "<span size='large'>AUR packages are up to date</span>";
@@ -277,7 +279,7 @@ public class AurUpdate(
                     }
                 }
 
-                var result = await privilegedOperationService.UpdateAurPackagesAsync(selectedPackages);
+                var result = await privilegedOperationService.UpdateAurPackagesAsync(selectedPackages, _runChecksCheck.GetActive());
                 
                 if (result.Success)
                     genericQuestionService.RaiseToastMessage(new ToastMessageEventArgs(

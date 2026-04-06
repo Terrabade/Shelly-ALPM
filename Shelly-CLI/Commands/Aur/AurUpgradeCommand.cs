@@ -20,7 +20,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
         {
             RootElevator.EnsureRootExectuion();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             var updates = await manager.GetPackagesNeedingUpdate();
 
@@ -106,7 +106,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             var updates = await manager.GetPackagesNeedingUpdate();
 

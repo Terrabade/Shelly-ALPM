@@ -20,6 +20,11 @@
           </style>
         </object>
       </child>
+        <child>
+                <object class="GtkBox">
+                  <property name="hexpand">true</property>
+                </object>
+              </child>
       <child>
         <object class="GtkCheckButton" id="chroot_check">
           <property name="label">Use chroot</property>
@@ -27,8 +32,9 @@
         </object>
       </child>
       <child>
-        <object class="GtkBox">
-          <property name="hexpand">true</property>
+        <object class="GtkCheckButton" id="run_checks_check">
+          <property name="label">Run checks</property>
+          <property name="tooltip-text">Run the --check function during package build (installs checkdepends)</property>
         </object>
       </child>
       <child>
