@@ -8,6 +8,7 @@ using Tmds.DBus.SourceGenerator;
 try
 {
     CancellationTokenSource? delayCts = null;
+    var forceCheck = false;
     var configReader = new ConfigReader();
 
     //review later source generated code generated with obsolete 
@@ -21,6 +22,7 @@ try
     connection.AddMethodHandler(new ShellyUiReceiver(() =>
     {
         configReader.Refresh();
+        forceCheck = true;
         try
         {
             delayCts?.Cancel();
@@ -81,8 +83,9 @@ try
         {
             try
             {
-                if (time.AddSeconds(30) < DateTime.Now)
+                if (forceCheck || time.AddSeconds(30) < DateTime.Now)
                 {
+                    forceCheck = false;
                     update = await updates.CheckForUpdates();
                     if (update > 0)
                     {
