@@ -174,8 +174,8 @@ public class UpgradeCommand : AsyncCommand<UpgradeSettings>
         return size switch
         {
             SizeDisplay.Bytes => downloadSize.ToString(),
-            SizeDisplay.Megabytes => (downloadSize / 1024).ToString(),
-            SizeDisplay.Gigabytes => ((downloadSize / 1024) / 1024).ToString(),
+            SizeDisplay.Megabytes => (downloadSize / 1048576.0).ToString("F2"),
+            SizeDisplay.Gigabytes => (downloadSize / 1073741824.0).ToString("F2"),
             _ => downloadSize.ToString()
         };
     }
