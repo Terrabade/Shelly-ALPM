@@ -126,7 +126,6 @@ scrolledwindow > scrollbar {
     border: 1px solid alpha(currentColor, 0.1);
     border-radius: 8px;
     background-color: alpha(currentColor, 0.02);
-    overflow: hidden;
 }
 
 .package-detail-expander:hover {
@@ -160,7 +159,6 @@ flowbox {
 flowboxchild {
     padding: 0;
     border-radius: 6px;
-    max-width: 100%;
 }
 
 flowboxchild:hover {

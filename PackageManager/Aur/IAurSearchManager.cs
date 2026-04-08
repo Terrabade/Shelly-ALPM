@@ -9,9 +9,9 @@ public interface IAurSearchManager
 {
     Task<AurResponse<AurPackageDto>> SearchAsync(string query, CancellationToken cancellationToken = default);
 
-    Task<AurResponse<AurPackageDto>> SuggestAsync(string query, CancellationToken cancellationToken = default);
+    Task<List<string>> SuggestAsync(string query, CancellationToken cancellationToken = default);
 
-    Task<AurResponse<AurPackageDto>> SuggestByPackageBaseNamesAsync(string query,
+    Task<List<string>> SuggestByPackageBaseNamesAsync(string query,
         CancellationToken cancellationToken = default);
 
     Task<AurResponse<AurPackageDto>> GetInfoAsync(IEnumerable<string> packageNames,

@@ -67,30 +67,18 @@ public class AurSearchManager : IAurSearchManager, IDisposable
         return response ?? new AurResponse<AurPackageDto> { Type = "error", Error = "Empty response" };
     }
 
-    public async Task<AurResponse<AurPackageDto>> SuggestAsync(string query,
+    public async Task<List<string>> SuggestAsync(string query,
         CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrl}suggest/{Uri.EscapeDataString(query)}";
-        var names = await _httpClient.GetFromJsonAsync(url, AurJsonContext.Default.ListString, cancellationToken);
-        
-        if (names == null || names.Count == 0)
-            return new AurResponse<AurPackageDto> { Type = "suggest", Results = [] };
-        
-        // Fetch full package info for the suggested names
-        return await GetInfoAsync(names, cancellationToken);
+        return await _httpClient.GetFromJsonAsync(url, AurJsonContext.Default.ListString, cancellationToken) ?? [];
     }
 
-    public async Task<AurResponse<AurPackageDto>> SuggestByPackageBaseNamesAsync(string query,
+    public async Task<List<string>>SuggestByPackageBaseNamesAsync(string query,
         CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrl}suggest-pkgbase/{Uri.EscapeDataString(query)}";
-        var names = await _httpClient.GetFromJsonAsync(url, AurJsonContext.Default.ListString, cancellationToken);
-        
-        if (names == null || names.Count == 0)
-            return new AurResponse<AurPackageDto> { Type = "suggest", Results = [] };
-        
-        // Fetch full package info for the suggested names
-        return await GetInfoAsync(names, cancellationToken);
+        return await _httpClient.GetFromJsonAsync(url, AurJsonContext.Default.ListString, cancellationToken) ?? [];
     }
 
     public async Task<AurResponse<AurPackageDto>> GetInfoAsync(IEnumerable<string> packageNames,

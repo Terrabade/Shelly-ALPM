@@ -90,11 +90,18 @@ public class AurPackageManager(string? configPath = null)
         var searchResponse = await _aurSearchManager.SearchAsync(query);
         var suggestResponse = await _aurSearchManager.SuggestAsync(query);
         var suggestByBaseNameResponse = await _aurSearchManager.SuggestByPackageBaseNamesAsync(query);
-        //this might fail if AUR is down.
-        return searchResponse.Results.Concat(suggestResponse.Results)
-            .Concat(suggestByBaseNameResponse.Results)
-            .DistinctBy(x => x.Name)
+        
+        var allNames = searchResponse.Results.Select(x => x.Name)
+            .Concat(suggestResponse)
+            .Concat(suggestByBaseNameResponse)
+            .Distinct()
             .ToList();
+
+        if (allNames.Count == 0) return [];
+        
+        var fullInfoResponse = await _aurSearchManager.GetInfoAsync(allNames);
+
+        return fullInfoResponse.Results;
     }
 
     public async Task<List<AurUpdateDto>> GetPackagesNeedingUpdate()
