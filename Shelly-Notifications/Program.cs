@@ -36,10 +36,14 @@ try
     var token = cts.Token;
 
 
-    var trayHandler = new StatusNotifierItemHandler();
+    var trayHandler = new StatusNotifierItemHandler(connection);
     connection.AddMethodHandler(trayHandler);
 
     var menuHandler = new DBusMenuHandler(connection);
+    menuHandler.OnUpdateStatusChanged += async (pending) =>
+    {
+        await trayHandler.SetUpdatesPending(pending);
+    };
     menuHandler.OnExitRequested += () =>
     {
         Console.WriteLine("Exit requested via tray menu.");
@@ -73,6 +77,7 @@ try
     {
         var updates = new UpdateService(menuHandler);
         var update = await updates.CheckForUpdates();
+        await trayHandler.SetUpdatesPending(update > 0);
         if (update > 0)
         {
             _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");
@@ -87,6 +92,7 @@ try
                 {
                     forceCheck = false;
                     update = await updates.CheckForUpdates();
+                    await trayHandler.SetUpdatesPending(update > 0);
                     if (update > 0)
                     {
                         _ = new NotificationHandler().SendNotif(connection, $"Updates available: {update}");

@@ -42,6 +42,12 @@
         <Content Include="Assets\shellylogo.png">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
+        <Content Include="Assets\shellylogo-update.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <Content Include="Assets\shellylogo-tray.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
         <Content Include="Assets\svg\flatpak-symbolic.svg">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
