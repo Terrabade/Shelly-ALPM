@@ -51,6 +51,59 @@ public class AlpmEventDialog
             };
             buttonBox.Append(selectButton);
         }
+        else if (e is { QuestionType: QuestionType.SelectOptionalDeps, ProviderOptions: not null })
+        {
+            var checkButtons = new List<CheckButton>();
+
+            // "Select All" toggle
+            var selectAllCheck = CheckButton.NewWithLabel("Select All");
+            box.Append(selectAllCheck);
+
+            // Scrollable container for many options
+            var scrolled = ScrolledWindow.New();
+            scrolled.SetMinContentHeight(150);
+            scrolled.SetMaxContentHeight(300);
+            scrolled.SetPolicy(PolicyType.Never, PolicyType.Automatic);
+
+            var optionsBox = Box.New(Orientation.Vertical, 4);
+            foreach (var option in e.ProviderOptions)
+            {
+                var check = CheckButton.NewWithLabel(option);
+                check.SetActive(true); // default all selected
+                checkButtons.Add(check);
+                optionsBox.Append(check);
+            }
+            scrolled.SetChild(optionsBox);
+            box.Append(scrolled);
+
+            // Wire up "Select All" toggle
+            selectAllCheck.SetActive(true);
+            selectAllCheck.OnToggled += (s, args) =>
+            {
+                var active = selectAllCheck.GetActive();
+                foreach (var cb in checkButtons)
+                {
+                    cb.SetActive(active);
+                }
+            };
+
+            var confirmButton = Button.NewWithLabel("Confirm");
+            confirmButton.SetCssClasses(["suggested-action"]);
+            confirmButton.OnClicked += (s, args) =>
+            {
+                int bitmask = 0;
+                for (int i = 0; i < checkButtons.Count; i++)
+                {
+                    if (checkButtons[i].GetActive())
+                    {
+                        bitmask |= (1 << i);
+                    }
+                }
+                e.SetResponse(bitmask);
+                parentOverlay.RemoveOverlay(box);
+            };
+            buttonBox.Append(confirmButton);
+        }
         else
         {
             var noButton = Button.NewWithLabel("No");
@@ -86,6 +139,7 @@ public class AlpmEventDialog
         QuestionType.ImportKey => "Import PGP Key?",
         QuestionType.SelectProvider => "Select Provider",
         QuestionType.RemovePkgs => "Remove Packages?",
+        QuestionType.SelectOptionalDeps => "Select Optional Dependencies",
         _ => "System Question"
     };
 }

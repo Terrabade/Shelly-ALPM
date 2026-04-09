@@ -37,6 +37,7 @@ public class HomeWindow(
     private ListBox? _operationLogListBox;
     private Button _archNewsButton = null!;
     private Overlay _overlay = null!;
+    private uint _updateTimerId;
 
     public Widget CreateWindow()
     {
@@ -104,6 +105,9 @@ public class HomeWindow(
         var upgradeAllButton = (Button)builder.GetObject("UpgradeAllButton")!;
         upgradeAllButton.OnClicked += (sender, args) => { _ = UpgradeAll(); };
 
+        var cacheCleanButton = (Button)builder.GetObject("CacheCleanButton")!;
+        cacheCleanButton.OnClicked += (sender, args) => OpenCacheCleanDialog();
+
         var config = configService.LoadConfig();
         var aurBox = (Box)builder.GetObject("AurBox")!;
         var flatpakBox = (Box)builder.GetObject("FlatpakBox")!;
@@ -129,7 +133,11 @@ public class HomeWindow(
         _archNewsButton.OnRealize += (sender, args) => { _ = LoadArchNews(_cts.Token); };
 
         _ = LoadUpdatesPanel(_updatesListBox!, _cts.Token);
-
+        _updateTimerId = GLib.Functions.TimeoutAdd(200, 180000, () =>
+        {
+            _ = LoadUpdatesPanel(_updatesListBox!, _cts.Token);
+            return true;
+        });
         return _overlay;
     }
 
@@ -328,7 +336,7 @@ public class HomeWindow(
             packageList.Max(package => package.Name.Length));
 
         return string.Join(Environment.NewLine, packageList.Select(package =>
-            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.Version} -> {package.OldVersion}"));
+            $"{FormatPackageName(package.Name, packageColumnWidth)}  {package.OldVersion} -> {package.Version}"));
     }
 
     private static string FormatPackageName(string packageName, int width)
@@ -381,6 +389,78 @@ public class HomeWindow(
         catch (Exception e)
         {
             Console.WriteLine(e);
+        }
+    }
+
+    private void OpenCacheCleanDialog()
+    {
+        try
+        {
+            var cacheDir = "/var/cache/pacman/pkg";
+            if (!Directory.Exists(cacheDir))
+            {
+                var toastArgs = new ToastMessageEventArgs("Cache directory does not exist");
+                genericQuestionService.RaiseToastMessage(toastArgs);
+                return;
+            }
+
+            var dialogEventArgs = new GenericDialogEventArgs(new Box());
+
+            var content = CacheCleanDialog.BuildContent(
+                cacheDir,
+                onClean: (keep, uninstalledOnly) =>
+                {
+                    dialogEventArgs.SetResponse(true);
+                    _ = ExecuteCacheClean(keep, uninstalledOnly);
+                },
+                onCancel: () => dialogEventArgs.SetResponse(false)
+            );
+
+            GenericOverlay.ShowGenericOverlay(_overlay, content, dialogEventArgs, 650, 550);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    private static string StripAnsiAndMarkup(string input)
+    {
+        var noAnsi = System.Text.RegularExpressions.Regex.Replace(input, @"\x1B\[[^@-~]*[@-~]", "");
+        var noMarkup = System.Text.RegularExpressions.Regex.Replace(noAnsi, @"\[\/?[a-zA-Z0-9_ ]*\]", "");
+        return noMarkup.Trim();
+    }
+
+    private async Task ExecuteCacheClean(int keep, bool uninstalledOnly)
+    {
+        try
+        {
+            lockoutService.Show("Cleaning package cache...");
+            var result = await privilegedOperationService.RunCacheCleanAsync(keep, uninstalledOnly);
+
+            string message;
+            if (result.Success)
+            {
+                var output = StripAnsiAndMarkup(result.Output ?? "");
+                message = string.IsNullOrWhiteSpace(output)
+                    ? "Package cache cleaned successfully"
+                    : output;
+            }
+            else
+            {
+                message = $"Cache clean failed: {result.Error}";
+            }
+
+            var toastArgs = new ToastMessageEventArgs(message);
+            genericQuestionService.RaiseToastMessage(toastArgs);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            lockoutService.Hide();
         }
     }
 
@@ -751,6 +831,11 @@ public class HomeWindow(
 
     public void Dispose()
     {
+        if (_updateTimerId > 0)
+        {
+            GLib.Functions.SourceRemove(_updateTimerId);
+            _updateTimerId = 0;
+        }
         _cts.Cancel();
         _cts.Dispose();
     }

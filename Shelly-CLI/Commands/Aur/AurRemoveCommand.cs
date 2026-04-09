@@ -49,7 +49,7 @@ public class AurRemoveCommand : AsyncCommand<AurRemovePackageSettings>
                     };
 
                     AnsiConsole.MarkupLine(
-                        $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName}: {args.Status}[/]" +
+                        $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName.EscapeMarkup()}: {args.Status}[/]" +
                         (args.Message != null ? $" - {args.Message.EscapeMarkup()}" : ""));
                 }
             };
@@ -74,7 +74,7 @@ public class AurRemoveCommand : AsyncCommand<AurRemovePackageSettings>
                 flags |= AlpmTransFlag.Cascade;
             }
 
-            AnsiConsole.MarkupLine($"[yellow]Removing AUR packages: {string.Join(", ", settings.Packages)}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Removing AUR packages: {string.Join(", ", settings.Packages.Select(p => p.EscapeMarkup()))}[/]");
             var progressTable = new Table().AddColumns("Package", "Progress", "Status", "Stage");
             await AnsiConsole.Live(progressTable).AutoClear(false)
                 .StartAsync(async ctx =>

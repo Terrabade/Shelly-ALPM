@@ -19,7 +19,7 @@ public class KeyringPopulateCommand : Command<KeyringSettings>
         if (settings.Keys?.Length > 0)
         {
             args += " " + string.Join(" ", settings.Keys);
-            AnsiConsole.MarkupLine($"[yellow]Populating keyring with: {string.Join(", ", settings.Keys)}...[/]");
+            AnsiConsole.MarkupLine($"[yellow]Populating keyring with: {string.Join(", ", settings.Keys.Select(k => k.EscapeMarkup()))}...[/]");
         }
         else
         {

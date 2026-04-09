@@ -24,13 +24,5 @@ public class MetaPackageModel(
 
     public string Repository { get; init; } = repository;
 
-    public bool IsInstalled { get; init; } = isInstalled;
-
-    private bool _isChecked;
-    //
-    // public bool IsChecked
-    // {
-    //     get => _isChecked;
-    //     set => this.RaiseAndSetIfChanged(ref _isChecked, value);
-    // }
+    public bool IsInstalled { get; set; } = isInstalled;
 }

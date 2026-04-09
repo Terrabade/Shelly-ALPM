@@ -23,9 +23,9 @@ public class TrayDBus : ITrayDbus
         var writer = _connection.GetMessageWriter();
 
         writer.WriteMethodCallHeader(
-            destination: ShellyConstants.Service,
-            path: ShellyConstants.Path,
-            @interface: ShellyConstants.Interface,
+            destination: ShellyConstants.TrayService,
+            path: ShellyConstants.TrayPath,
+            @interface: ShellyConstants.TrayInterface,
             member: method,
             signature: null);
 

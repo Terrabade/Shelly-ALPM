@@ -28,11 +28,11 @@ public class AurSearchPackageBuild : AsyncCommand<AurPackageSettings>
 
                 if (pkgbuild == null)
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to get pkgbuild for: {package}[/]");
+                    AnsiConsole.MarkupLine($"[red]Failed to get pkgbuild for: {package.EscapeMarkup()}[/]");
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[yellow]Package build for: {package}[/]");
+                    AnsiConsole.MarkupLine($"[yellow]Package build for: {package.EscapeMarkup()}[/]");
                     AnsiConsole.MarkupLine($"{pkgbuild.EscapeMarkup()}");
                 }
             }

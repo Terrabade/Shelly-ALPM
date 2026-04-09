@@ -28,7 +28,7 @@ public class DowngradePackageCommand : Command<DowngradePackageCommandSettings>
 
         RootElevator.EnsureRootExectuion();
         var package = settings.Packages[0];
-        AnsiConsole.MarkupLine($"[yellow]Looking for downgrade options for:[/]: {package}");
+        AnsiConsole.MarkupLine($"[yellow]Looking for downgrade options for:[/]: {package.EscapeMarkup()}");
 
         var manager = new AlpmManager();
         manager.Initialize(true);
@@ -56,7 +56,7 @@ public class DowngradePackageCommand : Command<DowngradePackageCommandSettings>
         var filePath = Path.Combine(Path.GetTempPath(), fileName);
 
         AnsiConsole.Status()
-            .Start($"[yellow]Downloading {fileName}...[/]", ctx =>
+            .Start($"[yellow]Downloading {fileName.EscapeMarkup()}...[/]", ctx =>
             {
                 using var response = client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).Result;
                 response.EnsureSuccessStatusCode();
@@ -65,7 +65,7 @@ public class DowngradePackageCommand : Command<DowngradePackageCommandSettings>
                 response.Content.ReadAsStream().CopyTo(fs);
             });
 
-        AnsiConsole.MarkupLine($"[green]Downloaded to {filePath}[/]");
+        AnsiConsole.MarkupLine($"[green]Downloaded to {filePath.EscapeMarkup()}[/]");
 
         if (!AnsiConsole.Confirm("Do you want to proceed with the installation?"))
         {

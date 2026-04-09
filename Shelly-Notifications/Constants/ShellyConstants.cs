@@ -2,7 +2,8 @@ namespace Shelly_Notifications.Constants;
 
 public static class ShellyConstants
 {
-    public const string Interface = "com.shellyorg.shelly";
-    public const string Path = "/com/shellyorg/shelly";
-    public const string Service = "com.shellyorg.shelly";
+    public const string Interface = "org.shelly.Notifications";
+    public const string Path = "/org/shelly/Notifications";
+    public const string Service = "org.shelly.Notifications";
+    
 }

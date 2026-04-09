@@ -20,7 +20,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
         {
             RootElevator.EnsureRootExectuion();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             var updates = await manager.GetPackagesNeedingUpdate();
 
@@ -33,7 +33,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
             AnsiConsole.MarkupLine($"[yellow]{updates.Count} AUR packages need updates:[/]");
             foreach (var pkg in updates)
             {
-                AnsiConsole.MarkupLine($"  {pkg.Name}: {pkg.Version} -> {pkg.NewVersion}");
+                AnsiConsole.MarkupLine($"  {pkg.Name.EscapeMarkup()}: {pkg.Version.EscapeMarkup()} -> {pkg.NewVersion.EscapeMarkup()}");
             }
 
             if (!settings.NoConfirm)
@@ -58,7 +58,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
                 };
 
                 AnsiConsole.MarkupLine(
-                    $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName}: {args.Status}[/]" +
+                    $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName.EscapeMarkup()}: {args.Status}[/]" +
                     (args.Message != null ? $" - {args.Message.EscapeMarkup()}" : ""));
             };
 
@@ -71,16 +71,16 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
                 }
 
                 var showDiff = AnsiConsole.Confirm(
-                    $"[yellow]PKGBUILD changed for {args.PackageName}. View diff?[/]", defaultValue: false);
+                    $"[yellow]PKGBUILD changed for {args.PackageName.EscapeMarkup()}. View diff?[/]", defaultValue: false);
 
                 if (showDiff)
                 {
-                    AnsiConsole.MarkupLine($"[blue]--- PKGBUILD diff for {args.PackageName} ---[/]");
+                    AnsiConsole.MarkupLine($"[blue]--- PKGBUILD diff for {args.PackageName.EscapeMarkup()} ---[/]");
                     PrintUnifiedDiff(args.OldPkgbuild, args.NewPkgbuild);
                 }
 
                 args.ProceedWithUpdate = AnsiConsole.Confirm(
-                    $"[yellow]Proceed with update for {args.PackageName}?[/]", defaultValue: true);
+                    $"[yellow]Proceed with update for {args.PackageName.EscapeMarkup()}?[/]", defaultValue: true);
             };
 
             var packageNames = updates.Select(u => u.Name).ToList();
@@ -106,7 +106,7 @@ public class AurUpgradeCommand : AsyncCommand<AurUpgradeSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true);
+            await manager.Initialize(root: true, noCheck: !settings.Check);
 
             var updates = await manager.GetPackagesNeedingUpdate();
 

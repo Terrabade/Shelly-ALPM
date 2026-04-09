@@ -53,14 +53,13 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
         var installDir = Path.Combine("/opt/shelly");
         Directory.CreateDirectory(installDir);
 
-        var destPath = Path.Combine(installDir, Path.GetFileName(filePath));
+        var appName = Path.GetFileNameWithoutExtension(filePath);
+        var destPath = Path.Combine(installDir, appName + ".AppImage");
         File.Copy(filePath, destPath, overwrite: true);
         AnsiConsole.MarkupLine($"[green]Copied appimage to: {destPath.EscapeMarkup()}[/]");
 
         SetFilePermissions(destPath, "a+x");
         AnsiConsole.MarkupLine($"[green]Setting file permissions to: a+x[/]");
-
-        var appName = Path.GetFileNameWithoutExtension(filePath);
 
         Console.WriteLine("Creating desktop entry...");
         CreateDesktopEntry(
@@ -78,7 +77,7 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
     private static Task<bool> IsAppImage(string filePath)
     {
         var extension = Path.GetExtension(filePath);
-        return Task.FromResult(extension == ".AppImage");
+        return Task.FromResult(string.Equals(extension, ".AppImage", StringComparison.OrdinalIgnoreCase));
     }
 
     private static void SetFilePermissions(string filePath, string permissions)
@@ -98,7 +97,7 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set file permissions: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set file permissions: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 
@@ -133,11 +132,11 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
             SetFilePermissions(desktopFilePath, "644");
             UpdateDesktopDatabase(desktopDir);
 
-            AnsiConsole.MarkupLine($"[green]Desktop entry created: {desktopFilePath}[/]");
+            AnsiConsole.MarkupLine($"[green]Desktop entry created: {desktopFilePath.EscapeMarkup()}[/]");
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not create desktop entry: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not create desktop entry: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 
@@ -166,7 +165,7 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set desktop database: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set desktop database: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 }

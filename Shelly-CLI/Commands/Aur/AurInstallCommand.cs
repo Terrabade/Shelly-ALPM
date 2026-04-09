@@ -29,7 +29,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
 
         var packageList = settings.Packages.ToList();
 
-        AnsiConsole.MarkupLine($"[yellow]AUR packages to install:[/] {string.Join(", ", packageList)}");
+        AnsiConsole.MarkupLine($"[yellow]AUR packages to install:[/] {string.Join(", ", packageList.Select(p => p.EscapeMarkup()))}");
 
         if (!Program.IsUiMode)
         {
@@ -44,7 +44,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
         {
             RootElevator.EnsureRootExectuion();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
             object renderLock = new();
 
             manager.PackageProgress += (sender, args) =>
@@ -62,7 +62,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
                     };
 
                     AnsiConsole.MarkupLine(
-                        $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName}: {args.Status}[/]" +
+                        $"[{statusColor}][[{args.CurrentIndex}/{args.TotalCount}]] {args.PackageName.EscapeMarkup()}: {args.Status}[/]" +
                         (args.Message != null ? $" - {args.Message.EscapeMarkup()}" : ""));
                 }
             };
@@ -100,7 +100,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[yellow]Installing AUR packages: {string.Join(", ", settings.Packages)}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Installing AUR packages: {string.Join(", ", settings.Packages.Select(p => p.EscapeMarkup()))}[/]");
             var progressTable = new Table().AddColumns("Package", "Progress", "Status", "Stage");
             await AnsiConsole.Live(progressTable).AutoClear(false)
                 .StartAsync(async ctx =>
@@ -140,12 +140,12 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
                 });
             manager.Dispose();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
             var missingPackages = await GetMissingPackages(manager, packageList);
             if (missingPackages.Count > 0)
             {
                 AnsiConsole.MarkupLine(
-                    $"[red]Installation failed:[/] {string.Join(", ", missingPackages)}");
+                    $"[red]Installation failed:[/] {string.Join(", ", missingPackages.Select(p => p.EscapeMarkup()))}");
                 return 1;
             }
 
@@ -176,7 +176,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
         try
         {
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
 
             var packageList = settings.Packages.ToList();
 
@@ -222,7 +222,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
             // Recreate manager to get fresh installed package list (avoid stale cache)
             manager.Dispose();
             manager = new AurPackageManager();
-            await manager.Initialize(root: true, useChroot: settings.UseChroot);
+            await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
 
             var missingPackages = await GetMissingPackages(manager, packageList);
             if (missingPackages.Count > 0)

@@ -85,6 +85,7 @@ public class PackageUpdate(
         _filterListModel = FilterListModel.New(_listStore, _filter);
         _selectionModel = SingleSelection.New(_filterListModel);
         _selectionModel.CanUnselect = true;
+        _selectionModel.Autoselect = false;
         _columnView.SetModel(_selectionModel);
 
         SetupColumns(_checkColumn, _nameColumn, _sizeDiffColumn, _oldColumn, _versionColumn);
@@ -117,6 +118,7 @@ public class PackageUpdate(
         _selectionModel.OnSelectionChanged += (_, _) =>
         {
             var item = _selectionModel.GetSelectedItem();
+            _detailRevealer.SetTransitionType(RevealerTransitionType.SlideLeft);
             if (item is AlpmUpdateGObject pkgObj)
             {
                 ShowPackageDetails(pkgObj);
@@ -124,7 +126,6 @@ public class PackageUpdate(
             else
             {
                 _detailRevealer.SetRevealChild(false);
-                _detailRevealer.SetVisible(false);
                 _currentDetailPkg = null;
             }
         };
@@ -148,7 +149,7 @@ public class PackageUpdate(
         }
 
         var backButton = Button.New();
-        backButton.SetIconName("go-previous-symbolic");
+        backButton.SetIconName("go-next-symbolic");
         backButton.Halign = Align.Start;
         backButton.AddCssClass("flat");
         backButton.TooltipText = "Close details";
@@ -156,31 +157,38 @@ public class PackageUpdate(
         {
             _currentDetailPkg = null;
             _selectionModel.UnselectItem(_selectionModel.GetSelected());
+            _detailRevealer.SetTransitionType(RevealerTransitionType.SlideLeft);
             _detailRevealer.SetRevealChild(false);
-            _detailRevealer.SetVisible(false);
         };
         _detailBox.Append(backButton);
 
         void AddDetail(string label, string value)
         {
-            var row = Box.New(Orientation.Horizontal, 4);
+            var row = Box.New(Orientation.Horizontal, 12);
+            row.MarginBottom = 4;
             var labelWidget = Label.New(label + ":");
             labelWidget.AddCssClass("dim-label");
             labelWidget.Halign = Align.Start;
             labelWidget.Valign = Align.Start;
-            labelWidget.WidthRequest = 70;
+            labelWidget.WidthRequest = 80;
+            labelWidget.Xalign = 0;
 
             var valueWidget = Label.New(value);
             valueWidget.Halign = Align.Start;
             valueWidget.Wrap = true;
             valueWidget.WrapMode = Pango.WrapMode.WordChar;
-            valueWidget.MaxWidthChars = 20;
+            valueWidget.MaxWidthChars = 30;
             valueWidget.Xalign = 0;
+            valueWidget.Selectable = true;
 
             row.Append(labelWidget);
             row.Append(valueWidget);
             _detailBox.Append(row);
         }
+
+        var headerBox = Box.New(Orientation.Vertical, 4);
+        headerBox.MarginBottom = 16;
+        headerBox.MarginTop = 8;
 
         var iconImage = new Image { PixelSize = 64, Halign = Align.Center, MarginBottom = 8 };
         var iconPath = iconResolverService.GetIconPath(pkg.Name);
@@ -193,16 +201,23 @@ public class PackageUpdate(
         {
             iconImage.SetFromIconName("package-x-generic");
         }
+        headerBox.Append(iconImage);
 
-        _detailBox.Append(iconImage);
+        var nameLabel = Label.New(pkg.Name);
+        nameLabel.AddCssClass("title-2");
+        nameLabel.Halign = Align.Center;
+        headerBox.Append(nameLabel);
 
-        AddDetail("Name", pkg.Name);
+        _detailBox.Append(headerBox);
+
+        var separator = Separator.New(Orientation.Horizontal);
+        separator.MarginBottom = 16;
+        _detailBox.Append(separator);
+
         AddDetail("Current", pkg.CurrentVersion);
         AddDetail("New", pkg.NewVersion);
         AddDetail("Download", SizeHelpers.FormatSize(pkg.DownloadSize));
         AddDetail("Size Diff", SizeHelpers.FormatSize(pkg.SizeDifference));
-
-        _detailRevealer.SetVisible(true);
         _detailRevealer.SetRevealChild(true);
     }
 

@@ -9,7 +9,8 @@ namespace PackageManager.Aur;
 public interface IAurPackageManager : IDisposable
 {
     Task Initialize(bool root = false, bool useTempPath = false, bool useChroot = false,
-        string chrootPath = "/var/lib/shelly/chroot", string tempPath = "", bool showHiddenPackages = false);
+        string chrootPath = "/var/lib/shelly/chroot", string tempPath = "", bool showHiddenPackages = false,
+        bool noCheck = true);
 
     Task<List<AurPackageDto>> GetInstalledPackages();
     Task<List<AurPackageDto>> SearchPackages(string query);

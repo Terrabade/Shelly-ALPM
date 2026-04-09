@@ -31,7 +31,7 @@ public class ConfigService : IConfigService
         CallCliConfigSet(nameof(config.WindowHeight), config.WindowHeight.ToString());
         CallCliConfigSet(nameof(config.DefaultView), config.DefaultView);
         CallCliConfigSet(nameof(config.UseKdeTheme), config.UseKdeTheme.ToString());
-        CallCliConfigSet(nameof(config.UseHorizontalMenu), config.UseHorizontalMenu.ToString());
+        CallCliConfigSet(nameof(config.UseOldMenu), config.UseOldMenu.ToString());
         CallCliConfigSet(nameof(config.TrayEnabled), config.TrayEnabled.ToString());
         CallCliConfigSet(nameof(config.TrayCheckIntervalHours), config.TrayCheckIntervalHours.ToString());
         CallCliConfigSet(nameof(config.NoConfirm), config.NoConfirm.ToString());

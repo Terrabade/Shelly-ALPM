@@ -1,8 +1,6 @@
 .rounded-card {
     border-radius: 12px;
     border: 1px solid alpha(currentColor, 0.15);
-    overflow: hidden;
-    clip-path: inset(0 round 12px);
 }
 
 .rounded-card viewport,
@@ -19,11 +17,45 @@
     background-image: none;
     border: none;
     box-shadow: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    transition: background 0.2s ease-in-out;
 }
 
 .nav-button:hover,
 .nav-button button:hover {
+    background: alpha(currentColor, 0.05);
+}
+
+.nav-button:active,
+.nav-button button:active {
     background: alpha(currentColor, 0.1);
+}
+
+.nav-button.selected,
+.nav-button.selected button {
+    background: alpha(@theme_selected_bg_color, 0.2);
+    color: @theme_selected_bg_color;
+    font-weight: bold;
+}
+
+.sidebar {
+    background-color: alpha(@theme_bg_color, 0.5);
+    padding: 10px 5px;
+    border: none;
+    border-right: none;
+    box-shadow: none;
+}
+
+.heading {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: alpha(currentColor, 0.5);
+    margin-left: 12px;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .lockout-overlay {
@@ -87,4 +119,48 @@ scrolledwindow > scrollbar {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     padding: 10px 16px;
     color: @theme_fg_color;
+}
+
+.package-detail-expander {
+    margin-top: 8px;
+    border: 1px solid alpha(currentColor, 0.1);
+    border-radius: 8px;
+    background-color: alpha(currentColor, 0.02);
+}
+
+.package-detail-expander:hover {
+    background-color: alpha(currentColor, 0.05);
+}
+
+.package-detail-expander > box:first-child {
+    padding: 8px 12px;
+    font-weight: bold;
+    color: alpha(currentColor, 0.8);
+}
+
+.package-detail-expander > box {
+    padding: 8px 12px 12px 12px;
+}
+
+.package-chip {
+    background-color: alpha(currentColor, 0.05);
+    border: 1px solid alpha(currentColor, 0.1);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.9em;
+    font-weight: normal;
+}
+
+flowbox {
+    margin: 0;
+    padding: 0;
+}
+
+flowboxchild {
+    padding: 0;
+    border-radius: 6px;
+}
+
+flowboxchild:hover {
+    background-color: alpha(currentColor, 0.1);
 }

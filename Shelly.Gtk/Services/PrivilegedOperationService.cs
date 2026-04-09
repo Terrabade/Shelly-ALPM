@@ -197,12 +197,16 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         );
     }
 
-    public async Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false)
+    public async Task<OperationResult> InstallAurPackagesAsync(IEnumerable<string> packages, bool useChroot = false, bool runChecks = false)
     {
         var packageArgs = string.Join(" ", packages);
         if (useChroot)
         {
             packageArgs += " -c";
+        }
+        if (runChecks)
+        {
+            packageArgs += " --check";
         }
 
         return await ExecutePrivilegedWithNoConfirmCheck("Install AUR packages", "aur", "install", packageArgs);
@@ -219,9 +223,13 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         return await ExecutePrivilegedWithNoConfirmCheck("Remove AUR packages", "aur", "remove", packageArgs);
     }
 
-    public async Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages)
+    public async Task<OperationResult> UpdateAurPackagesAsync(IEnumerable<string> packages, bool runChecks = false)
     {
         var packageArgs = string.Join(" ", packages);
+        if (runChecks)
+        {
+            packageArgs += " --check";
+        }
         var result = await ExecutePrivilegedWithNoConfirmCheck("Update AUR packages", "aur", "update", packageArgs);
         SendDbusMessage(result);
         return result;
@@ -468,6 +476,14 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         return standardPackages.Any(x => x.Name.Contains(packageName));
     }
 
+    public async Task<OperationResult> RunCacheCleanAsync(int keep, bool uninstalledOnly)
+    {
+        var args = new List<string> { "utility", "cache-clean", "-r", "-k", keep.ToString() };
+        if (uninstalledOnly)
+            args.Add("-u");
+        return await ExecutePrivilegedCommandAsync("Clean package cache", args.ToArray());
+    }
+
     private void SendDbusMessage(OperationResult result)
     {
         if (result.Success)
@@ -620,6 +636,11 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         string? providerQuestion = null;
         var awaitingProviderSelection = false;
 
+        // State for optional dependency selection handling
+        var optDepsOptions = new List<string>();
+        string? optDepsQuestion = null;
+        var awaitingOptDepsSelection = false;
+
         // State for conflict selection handling
         var conflictOptions = new List<string>();
         string? conflictQuestion = null;
@@ -694,6 +715,55 @@ public class PrivilegedOperationService : IPrivilegedOperationService
                             awaitingProviderSelection = false;
                             providerQuestion = null;
                             providerOptions.Clear();
+                        }
+                        else if (e.Data.StartsWith("[Shelly][ALPM_SELECT_OPTDEPS]"))
+                        {
+                            Console.WriteLine("Optional dependency selection received");
+                            awaitingOptDepsSelection = true;
+                            optDepsOptions.Clear();
+                            optDepsQuestion = e.Data.Substring("[Shelly][ALPM_SELECT_OPTDEPS]".Length);
+                            Console.Error.WriteLine($"[Shelly]Select optional deps for: {optDepsQuestion}");
+                        }
+                        else if (e.Data.StartsWith("[Shelly][ALPM_OPTDEPS_OPTION]"))
+                        {
+                            var payload = e.Data.Substring("[Shelly][ALPM_OPTDEPS_OPTION]".Length);
+                            var parts = payload.Split(':', 2);
+                            if (parts.Length == 2 && int.TryParse(parts[0], out var idx))
+                            {
+                                while (optDepsOptions.Count <= idx) optDepsOptions.Add(string.Empty);
+                                optDepsOptions[idx] = parts[1];
+                            }
+                            else
+                            {
+                                optDepsOptions.Add(payload);
+                            }
+                        }
+                        else if (e.Data.StartsWith("[Shelly][ALPM_OPTDEPS_END]"))
+                        {
+                            Console.Error.WriteLine("[Shelly]Optional deps selection end");
+                            var args = new QuestionEventArgs(
+                                QuestionType.SelectOptionalDeps,
+                                optDepsQuestion ?? "Select optional dependencies",
+                                new List<string>(optDepsOptions),
+                                optDepsQuestion);
+
+                            _alpmEventService.RaiseQuestion(args);
+                            await args.WaitForResponseAsync();
+
+                            if (args.Response != -1)
+                            {
+                                var selected = new List<string>();
+                                for (int i = 0; i < optDepsOptions.Count; i++)
+                                {
+                                    if ((args.Response & (1 << i)) != 0)
+                                        selected.Add(optDepsOptions[i]);
+                                }
+                                await SafeWriteAsync(string.Join(" ", selected));
+                            }
+
+                            awaitingOptDepsSelection = false;
+                            optDepsQuestion = null;
+                            optDepsOptions.Clear();
                         }
                         else if (e.Data.StartsWith("[Shelly][ALPM_QUESTION_CONFLICT]"))
                         {

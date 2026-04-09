@@ -81,13 +81,13 @@
             <property name="orientation">horizontal</property>
             <property name="spacing">10</property>
             <property name="hexpand">true</property>
-            <property name="homogeneous">true</property>
+            <!--<property name="homogeneous">true</property>-->
             <property name="vexpand">false</property>
             <property name="valign">end</property>
             <child>
               <object class="GtkFrame">
                 <property name="hexpand">true</property>
-                <property name="width-request">300</property>
+                <property name="width-request">200</property>
                 <property name="height-request">250</property>
                 <style>
                   <class name="rounded-card"/>
@@ -103,6 +103,7 @@
                     <child>
                       <object class="GtkLabel">
                         <property name="label">Recent Activity</property>
+                        <property name="halign">center</property>
                         <property name="xalign">0</property>
                         <style>
                           <class name="title-2"/>
@@ -132,7 +133,7 @@
                 <property name="hscrollbar-policy">never</property>
                 <property name="vscrollbar-policy">never</property>
                 <property name="hexpand">true</property>
-                <property name="width-request">300</property>
+                <property name="width-request">200</property>
                 <property name="height-request">250</property>
                 <property name="vexpand">false</property>
                 <style>
@@ -159,7 +160,7 @@
                     </child>
                     <child>
                       <object class="GtkBox">
-                        <property name="homogeneous">true</property>
+                       <!-- <property name="homogeneous">true</property>-->
                         <property name="orientation">horizontal</property>
                         <property name="spacing">20</property>
                         <child>
@@ -265,24 +266,46 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkBox">
-                        <property name="orientation">horizontal</property>
+                      <object class="GtkGrid">
                         <property name="halign">center</property>
-                        <property name="spacing">10</property>
+                        <property name="row-spacing">10</property>
+                        <property name="column-spacing">10</property>
                         <property name="margin-top">10</property>
+                      <!--  <property name="column-homogeneous">true</property>-->
                         <child>
                           <object class="GtkButton" id="ExportSyncButton">
                             <property name="label">Export Sync file</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="row">0</property>
+                            </layout>
                           </object>
                         </child>
                         <child>
                           <object class="GtkButton" id="UpgradeAllButton">
                             <property name="label">Upgrade All</property>
+                            <layout>
+                              <property name="column">1</property>
+                              <property name="row">0</property>
+                            </layout>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="CacheCleanButton">
+                            <property name="label">Clean Cache</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="row">1</property>
+                            </layout>
                           </object>
                         </child>
                         <child>
                           <object class="GtkButton" id="ArchNewsButton">
                             <property name="label">View News</property>
+                            <layout>
+                              <property name="column">1</property>
+                              <property name="row">1</property>
+                            </layout>
                           </object>
                         </child>
                       </object>
@@ -294,7 +317,7 @@
             <child>
               <object class="GtkFrame">
                 <property name="hexpand">true</property>
-                <property name="width-request">300</property>
+                <property name="width-request">200</property>
                 <property name="height-request">250</property>
                 <property name="vexpand">false</property>
                 <style>
@@ -311,6 +334,7 @@
                     <child>
                       <object class="GtkLabel">
                         <property name="label">Available Updates</property>
+                        <property name="halign">center</property>
                         <property name="xalign">0</property>
                         <style>
                           <class name="title-2"/>

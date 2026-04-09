@@ -27,7 +27,7 @@ public class KeyringRecvCommand : Command<KeyringSettings>
             args += $" --keyserver {settings.Keyserver}";
         }
 
-        AnsiConsole.MarkupLine($"[yellow]Receiving keys: {string.Join(", ", settings.Keys)}...[/]");
+        AnsiConsole.MarkupLine($"[yellow]Receiving keys: {string.Join(", ", settings.Keys.Select(k => k.EscapeMarkup()))}...[/]");
         var result = PacmanKeyRunner.Run(args);
         if (result == 0)
         {

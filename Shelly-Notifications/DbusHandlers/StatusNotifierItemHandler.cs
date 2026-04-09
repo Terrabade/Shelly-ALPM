@@ -3,11 +3,42 @@ using Tmds.DBus.Protocol;
 
 namespace Shelly_Notifications.DbusHandlers;
 
-internal class StatusNotifierItemHandler : IPathMethodHandler
+internal class StatusNotifierItemHandler(Connection connection) : IPathMethodHandler
 {
     public string Path => "/StatusNotifierItem";
     
-    public bool HandlesChildPaths => false; 
+    public bool HandlesChildPaths => false;
+
+    private string _iconName = "shelly-tray";
+
+    public async Task SetUpdatesPending(bool pending)
+    {
+        var newIcon = pending ? "shelly-update" : "shelly-tray";
+        if (_iconName != newIcon)
+        {
+            _iconName = newIcon;
+            await EmitNewIconAsync();
+        }
+    }
+
+    private async Task EmitNewIconAsync()
+    {
+        var writer = connection.GetMessageWriter();
+        writer.WriteSignalHeader(
+            path: Path,
+            @interface: "org.kde.StatusNotifierItem",
+            member: "NewIcon"
+        );
+        connection.TrySendMessage(writer.CreateMessage());
+
+        writer = connection.GetMessageWriter();
+        writer.WriteSignalHeader(
+            path: Path,
+            @interface: "org.freedesktop.StatusNotifierItem",
+            member: "NewIcon"
+        );
+        connection.TrySendMessage(writer.CreateMessage());
+    }
 
     public ValueTask HandleMethodAsync(MethodContext context)
     {
@@ -49,7 +80,7 @@ internal class StatusNotifierItemHandler : IPathMethodHandler
                                 { "Id", (VariantValue)"Shelly" },
                                 { "Title", (VariantValue)"Shelly Notifications" },
                                 { "Status", (VariantValue)"Active" },
-                                { "IconName", (VariantValue)"shelly" },
+                                { "IconName", (VariantValue)_iconName },
                                 { "IconThemePath", (VariantValue)string.Empty },
                                 { "ItemIsMenu", (VariantValue)false },
                                 { "Menu", (VariantValue)new ObjectPath("/MenuBar") }
@@ -78,7 +109,7 @@ internal class StatusNotifierItemHandler : IPathMethodHandler
                                 case "Id": writer.WriteVariant("Shelly"); break;
                                 case "Title": writer.WriteVariant("Shelly Notifications"); break;
                                 case "Status": writer.WriteVariant("Active"); break;
-                                case "IconName": writer.WriteVariant("shelly"); break;
+                                case "IconName": writer.WriteVariant(_iconName); break;
                                 case "IconThemePath": writer.WriteVariant(string.Empty); break;
                                 case "ItemIsMenu": writer.WriteVariant(false); break;
                                 case "Menu": writer.WriteVariant(new ObjectPath("/MenuBar")); break;

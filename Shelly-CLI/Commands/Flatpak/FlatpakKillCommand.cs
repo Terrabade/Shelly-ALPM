@@ -18,7 +18,7 @@ public class FlatpakKillCommand : Command<FlatpakPackageSettings>
         AnsiConsole.MarkupLine("[yellow]Killing selected flatpak app...[/]");
         var result = new FlatpakManager().KillApp(settings.Packages);
 
-        AnsiConsole.MarkupLine("[red]" + result + "[/]");
+        AnsiConsole.MarkupLine("[red]" + result.EscapeMarkup() + "[/]");
 
         return 0;
     }

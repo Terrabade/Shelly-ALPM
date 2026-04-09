@@ -12,6 +12,8 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
 
     public event Action? OnExitRequested;
 
+    private bool _layoutDirty = false;
+
     private static readonly
         Dictionary<int, (string Label, string Type, bool Enabled, string icon, string subMenu, MenuEnum action, bool visible)> Items =
             new()
@@ -47,8 +49,10 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
                 return HandleGetProperty(context);
             if (req.Member.SequenceEqual("AboutToShow"u8))
             {
+                var aboutReader = req.GetBodyReader();
+                _ = aboutReader.ReadInt32();
                 using var w = context.CreateReplyWriter("b");
-                w.WriteBool(false);
+                w.WriteBool(_layoutDirty);
                 context.Reply(w.CreateMessage());
                 return ValueTask.CompletedTask;
             }
@@ -64,6 +68,11 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
                 Console.WriteLine($"[DBusMenu] AboutToShowGroup for ids: {string.Join(", ", ids)}");
                 using var w = context.CreateReplyWriter("aiai");
                 var updatesNeeded = w.WriteArrayStart(DBusType.Int32);
+                if (_layoutDirty)
+                {
+                    foreach (var id in ids)
+                        w.WriteInt32(id);
+                }
                 w.WriteArrayEnd(updatesNeeded);
                 var idErrors = w.WriteArrayStart(DBusType.Int32);
                 w.WriteArrayEnd(idErrors);
@@ -240,6 +249,8 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
         return ValueTask.CompletedTask;
     }
 
+    public event Func<bool, Task>? OnUpdateStatusChanged;
+
     private async Task DispatchAction(MenuEnum action)
     {
         switch (action)
@@ -248,13 +259,21 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
                 var updates = await new UpdateService(this).CheckForUpdates();
                 new NotificationHandler().SendNotif(connection,
                     updates > 0 ? $"Updates available: {updates}" : "No updates available.");
+                if (OnUpdateStatusChanged != null)
+                {
+                    await OnUpdateStatusChanged(updates > 0);
+                }
                 break;
             case MenuEnum.OpenShelly:
                 AppRunner.LaunchAppIfNotRunning("");
                 break;
             case MenuEnum.UpdatePackages:
                 await AppRunner.SpawnTerminalWithCommandAsync("sudo shelly -a");
-                await new UpdateService(this).CheckForUpdates();
+                var postUpdateUpdates = await new UpdateService(this).CheckForUpdates();
+                if (OnUpdateStatusChanged != null)
+                {
+                    await OnUpdateStatusChanged(postUpdateUpdates > 0);
+                }
                 break;
             case MenuEnum.Exit:
                 OnExitRequested?.Invoke();
@@ -361,6 +380,7 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
 
     public void NotifyChildrenDisplayChanged(SyncModel syncModel)
     {
+        _layoutDirty = false;
         var startValue = 101;
 
         try
@@ -445,6 +465,7 @@ public class DBusMenuHandler(Connection connection) : IPathMethodHandler
         writer.WriteArrayEnd(removedArr);
 
         connection.TrySendMessage(writer.CreateMessage());
+        _layoutDirty = true;
         ForceRedraw();
     }
 

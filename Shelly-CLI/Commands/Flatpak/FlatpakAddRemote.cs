@@ -12,11 +12,11 @@ public class FlatpakAddRemote :  Command<FlatpakRemoteSettings>
         
         var manager = new FlatpakManager();
 
-        AnsiConsole.MarkupLine($"[blue]Adding remote {settings.RemoteName} [/]");
+        AnsiConsole.MarkupLine($"[blue]Adding remote {settings.RemoteName.EscapeMarkup()} [/]");
         
         var remotes = manager.AddRemote(settings.RemoteName, settings.RemoteUrl, settings.SystemWide, settings.GpgVerify);
         
-        AnsiConsole.MarkupLine($"{remotes}");
+        AnsiConsole.MarkupLine($"{remotes.EscapeMarkup()}");
         
         return 0;
     }

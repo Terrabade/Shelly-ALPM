@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="MANUAL_TESTING.md" />
+  </Folder>
+  <Project Path="PackageManager/PackageManager.csproj" />
+  <Project Path="PackageManager.Tests/PackageManager.Tests.csproj" />
+  <Project Path="Shelly-CLI/Shelly-CLI.csproj" />
+  <Project Path="Shelly-CLI.Tests/Shelly-CLI.Tests.csproj" />
+  <Project Path="Shelly-Notifications/Shelly-Notifications.csproj" />
+  <Project Path="Shelly.Gtk/Shelly.Gtk.csproj" />
+</Solution>

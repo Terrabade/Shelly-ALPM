@@ -24,7 +24,7 @@ public class RemoveCommand : AsyncCommand<RemovePackageSettings>
         RootElevator.EnsureRootExectuion();
         var packageList = settings.Packages.ToList();
 
-        AnsiConsole.MarkupLine($"[yellow]Packages to remove:[/] {string.Join(", ", packageList)}");
+        AnsiConsole.MarkupLine($"[yellow]Packages to remove:[/] {string.Join(", ", packageList.Select(p => p.EscapeMarkup()))}");
 
         if (!Program.IsUiMode)
         {

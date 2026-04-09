@@ -17,9 +17,9 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>2.0.6</Version>
+        <Version>2.0.8</Version>
         <AssemblyName>shelly-ui</AssemblyName>
-        <AssemblyVersion>2.0.6</AssemblyVersion>
+        <AssemblyVersion>2.0.8</AssemblyVersion>
         <AssemblyTitle>Shelly GTK UI</AssemblyTitle>
         <Description>Shelly GTK is a arch linux package manager</Description>
         <Company>Seafoam Labs</Company>
@@ -35,11 +35,17 @@
         <PackageReference Include="GirCore.GObject-2.0.Integration" Version="0.7.0"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-        <PackageReference Include="Tmds.DBus.Protocol" Version="0.90.3" />
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.92.0" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Assets\style.css" />
         <Content Include="Assets\shellylogo.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <Content Include="Assets\shellylogo-update.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <Content Include="Assets\shellylogo-tray.png">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Include="Assets\svg\flatpak-symbolic.svg">

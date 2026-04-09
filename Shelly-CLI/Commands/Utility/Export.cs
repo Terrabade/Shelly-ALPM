@@ -62,7 +62,7 @@ public class Export : AsyncCommand<ExportSettings>
 
         await File.WriteAllTextAsync(path, json);
 
-        AnsiConsole.MarkupLine($"[blue]Sync file exported to: {path}[/]");
+        AnsiConsole.MarkupLine($"[blue]Sync file exported to: {path.EscapeMarkup()}[/]");
 
         return 0;
     }

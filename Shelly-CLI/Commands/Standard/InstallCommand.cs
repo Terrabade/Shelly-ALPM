@@ -25,7 +25,7 @@ public class InstallCommand : AsyncCommand<InstallPackageSettings>
 
         var packageList = settings.Packages.ToList();
 
-        AnsiConsole.MarkupLine($"[yellow]Packages to install:[/] {string.Join(", ", packageList)}");
+        AnsiConsole.MarkupLine($"[yellow]Packages to install:[/] {string.Join(", ", packageList.Select(p => p.EscapeMarkup()))}");
 
         if (!AnsiConsole.Confirm("Do you want to proceed?"))
         {

@@ -11,11 +11,11 @@ public class FlatpakRemoveRemote : Command<FlatpakRemoveRemoteSettings>
     {
         var manager = new FlatpakManager();
 
-        AnsiConsole.MarkupLine($"[red]Removing remote {settings.RemoteName} [/]");
+        AnsiConsole.MarkupLine($"[red]Removing remote {settings.RemoteName.EscapeMarkup()} [/]");
 
         var remotes = manager.RemoveRemote(settings.RemoteName, settings.SystemWide);
 
-        AnsiConsole.MarkupLine($"{remotes}");
+        AnsiConsole.MarkupLine($"{remotes.EscapeMarkup()}");
 
         return 0;
     }

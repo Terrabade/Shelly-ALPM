@@ -148,7 +148,7 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
             }
         }
 
-        AnsiConsole.MarkupLine($"[green]Extracted to {installDir}[/]");
+        AnsiConsole.MarkupLine($"[green]Extracted to {installDir.EscapeMarkup()}[/]");
 
         foreach (var binaryName in installedBinaries)
         {
@@ -158,7 +158,7 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
             {
                 if (foundIcons.Count > 0)
                 {
-                    AnsiConsole.MarkupLine($"[cyan]Found icon for {binaryName}: {foundIcons.FirstOrDefault().Key}[/]");
+                    AnsiConsole.MarkupLine($"[cyan]Found icon for {binaryName.EscapeMarkup()}: {foundIcons.FirstOrDefault().Key.EscapeMarkup()}[/]");
                     var installedIconName = InstallIcon(foundIcons.FirstOrDefault().Value, binaryName);
                     if (installedIconName != null)
                     {
@@ -167,7 +167,7 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[yellow]No icon found for {binaryName}, using default[/]");
+                    AnsiConsole.MarkupLine($"[yellow]No icon found for {binaryName.EscapeMarkup()}, using default[/]");
                 }
 
                 Console.WriteLine("Creating desktop entry...");
@@ -357,11 +357,11 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
             SetFilePermissions(desktopFilePath, "644");
             UpdateDesktopDatabase(desktopDir);
 
-            AnsiConsole.MarkupLine($"[green]Desktop entry created: {desktopFilePath}[/]");
+            AnsiConsole.MarkupLine($"[green]Desktop entry created: {desktopFilePath.EscapeMarkup()}[/]");
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not create desktop entry: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not create desktop entry: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 
@@ -390,7 +390,7 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set file permissions: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set file permissions: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 
@@ -411,7 +411,7 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set desktop database: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not set desktop database: {ex.Message.EscapeMarkup()}[/]");
         }
     }
 
@@ -455,14 +455,14 @@ public class InstallLocalPackageCommand : AsyncCommand<InstallLocalPackageSettin
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[yellow]Warning: Failed to update icon cache: {ex.Message}[/]");
+                AnsiConsole.MarkupLine($"[yellow]Warning: Failed to update icon cache: {ex.Message.EscapeMarkup()}[/]");
             }
 
             return appName.ToLower();
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning: Could not install icon: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning: Could not install icon: {ex.Message.EscapeMarkup()}[/]");
             return null;
         }
     }

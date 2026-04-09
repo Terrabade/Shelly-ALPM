@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using PackageManager.Alpm.Events;
 using PackageManager.Alpm.Events.EventArgs;
 using PackageManager.Alpm.Questions;
+using PackageManager.Alpm.Utilities;
 using PackageManager.Utilities;
 using static PackageManager.Alpm.AlpmReference;
 
@@ -1012,6 +1013,30 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
                      AlpmTransFlag.NoCheckSpace;
         }
 
+        List<string> optDependList = [];
+        foreach (var pkgPtr in pkgPtrs)
+        {
+            var pkg = new AlpmPackage(pkgPtr);
+            if (pkg != null)
+            {
+                optDependList.AddRange(pkg.OptDepends);
+            }
+        }
+
+        if (optDependList.Count > 0)
+        {
+            var args = new AlpmQuestionEventArgs(AlpmQuestionType.SelectOptionalDeps,
+                "Select optional dependencies",
+                optDependList);
+            Question?.Invoke(this,args);
+            args.WaitForResponse();
+            var selectedOptDeps = optDependList
+                .Where((dep, index) => (args.Response & (1 << index)) != 0)
+                .ToList();
+            var result = PackageListBuilder.Build(_handle, selectedOptDeps);
+            pkgPtrs.AddRange(result);
+        }
+
         // Initialize transaction
         if (TransInit(_handle, flags) != 0)
         {
@@ -1026,12 +1051,14 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             {
                 if (AddPkg(_handle, pkgPtr) != 0)
                 {
-                    // Note: In libalpm, if one fails, we might want to know which one, 
-                    // but here we just throw an exception for the first failure.
-                    Console.Error.WriteLine(
-                        $"[ALPM_ERROR]Failed to add package to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                    throw new Exception(
-                        $"Failed to add a package to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                    var err = ErrorNumber(_handle);
+                    // If it's just a duplicate target, skip it silently
+                    if (err == AlpmErrno.TransDupTarget)
+                    {
+                        Console.Error.WriteLine($"[ALPM_WARN] Skipping duplicate package in transaction.");
+                        continue;
+                    }
+                    throw new Exception($"Failed to add a package to transaction: {GetErrorMessage(err)}");
                 }
             }
 
@@ -1224,10 +1251,9 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         {
             _isPackageDownload = true;
             var updates = GetPackagesNeedingUpdate();
-            //TODO: Implement this with better handling across all levels of the project
-            var downloadTasks = updates.Select(pkg => Task.Run(() =>
+            var updateUrl = updates.Select(BuildPackageUrl).ToList();
+            var downloadTasks = updateUrl.Select(url => Task.Run(() =>
             {
-                var url = BuildPackageUrl(pkg);
                 var fileName = url.Split('/').Last();
                 var localPath = Path.Combine(_config.CacheDir, fileName);
                 if (!File.Exists(localPath))
@@ -2090,5 +2116,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         }
 
         throw new Exception($"Package '{pkg.Name}' not found in any sync database");
+    }
+
+    public static int VersionCompare(string a, string b)
+    {
+        return AlpmReference.PkgVerCmp(a, b);
     }
 }

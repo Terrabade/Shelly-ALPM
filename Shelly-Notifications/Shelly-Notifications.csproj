@@ -18,8 +18,8 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Version>2.0.6</Version>
-        <AssemblyVersion>2.0.6</AssemblyVersion>
+        <Version>2.0.8</Version>
+        <AssemblyVersion>2.0.8</AssemblyVersion>
         <AssemblyTitle>Shelly VALPM</AssemblyTitle>
         <Description>Shelly is a visual arch linux package manager</Description>
         <Company>Seafoam Labs</Company>
@@ -28,7 +28,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Tmds.DBus.Protocol" Version="0.90.3"/>
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.92.0" />
         <PackageReference Include="Tmds.DBus.SourceGenerator" Version="0.0.22">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

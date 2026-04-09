@@ -13,11 +13,11 @@ public class FlatpakSyncRemoteAppStream : Command
 
         if (result)
         {
-            AnsiConsole.MarkupLine($"[green]{stringResult}[/]");
+            AnsiConsole.MarkupLine($"[green]{stringResult.EscapeMarkup()}[/]");
             return 0;
         }
 
-        AnsiConsole.MarkupLine($"[red]{stringResult}[/]");
+        AnsiConsole.MarkupLine($"[red]{stringResult.EscapeMarkup()}[/]");
         return 1;
     }
 }

@@ -243,8 +243,9 @@ complete -c shelly -n "__fish_seen_subcommand_from config; and not __fish_seen_s
 # =====================
 # utility subcommands
 # =====================
-complete -c shelly -n "__fish_seen_subcommand_from utility; and not __fish_seen_subcommand_from export updates" -a export -d "Export sync file"
-complete -c shelly -n "__fish_seen_subcommand_from utility; and not __fish_seen_subcommand_from export updates" -a updates -d "Check for updates as non-root user"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and not __fish_seen_subcommand_from export updates cache-clean" -a export -d "Export sync file"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and not __fish_seen_subcommand_from export updates cache-clean" -a updates -d "Check for updates as non-root user"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and not __fish_seen_subcommand_from export updates cache-clean" -a cache-clean -d "Clean the package cache"
 
 # utility export options (ExportSettings)
 complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from export" -s o -l output -d "Output location" -r -F
@@ -256,3 +257,10 @@ complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subc
 complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from updates" -s f -l force -d "Force the operation"
 complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from updates" -s j -l json -d "Output in JSON format"
 complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from updates" -s y -l sync -d "Sync databases first"
+
+# utility cache-clean options (CacheCleanSettings)
+complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from cache-clean" -s r -l remove -d "Removes all candidate entries"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from cache-clean" -s k -l keep -d "Number of versions to keep" -r
+complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from cache-clean" -s u -l uninstalled -d "Target uninstalled packages"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from cache-clean" -s d -l dry-run -d "Show what would be removed"
+complete -c shelly -n "__fish_seen_subcommand_from utility; and __fish_seen_subcommand_from cache-clean" -s c -l cache-dir -d "Path to the cache directory" -r -F

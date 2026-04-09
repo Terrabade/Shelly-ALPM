@@ -12,6 +12,9 @@ public static class QuestionHandler
             case AlpmQuestionType.SelectProvider:
                 HandleProviderSelection(question, uiMode, noConfirm);
                 break;
+            case AlpmQuestionType.SelectOptionalDeps:
+                HandleOptionalDependencySelection(question, uiMode, noConfirm);
+                break;
             case AlpmQuestionType.ReplacePkg:
             case AlpmQuestionType.ConflictPkg:
             case AlpmQuestionType.InstallIgnorePkg:
@@ -21,6 +24,61 @@ public static class QuestionHandler
                 HandleYesNoQuestion(question, uiMode, noConfirm);
                 break;
         }
+    }
+
+    private static void HandleOptionalDependencySelection(AlpmQuestionEventArgs question, bool uiMode = false,
+        bool noConfirm = false)
+    {
+        var bitmask = 0;
+        if (question.ProviderOptions is null)
+        {
+            throw new ArgumentNullException(nameof(question.ProviderOptions),
+                "Cannot have a selection while provider options is null!");
+        }
+
+        if (uiMode)
+        {
+            if (noConfirm)
+            {
+                question.SetResponse((int)((1L << 31) - 1));
+            }
+
+            Console.Error.WriteLine($"[ALPM_SELECT_OPTDEPS]{question.DependencyName}");
+            for (var i = 0; i < question.ProviderOptions.Count; i++)
+            {
+                Console.Error.WriteLine($"[ALPM_OPTDEPS_OPTION]{i}:{question.ProviderOptions[i]}");
+            }
+
+            Console.Error.WriteLine("[ALPM_OPTDEPS_END]");
+            Console.Error.Flush();
+            
+            var input = Console.ReadLine();
+            var splitInput = input?.Split(" ");
+            for (var i = 0; i < question.ProviderOptions.Count; i++)
+            {
+                if (splitInput.Contains(question.ProviderOptions[i]))
+                {
+                    bitmask |= (1 << i);
+                }
+            }
+
+            question.SetResponse(bitmask);
+            return;
+        }
+        
+        var selection = AnsiConsole.Prompt(
+            new MultiSelectionPrompt<string>()
+                .Title($"[yellow]{question.QuestionText}[/]")
+                .AddChoices(question.ProviderOptions!));
+        for (var i = 0; i < question.ProviderOptions.Count; i++)
+        {
+            if (selection.Contains(question.ProviderOptions[i]))
+            {
+                bitmask |= (1 << i);
+            }
+        }
+
+        question.SetResponse(bitmask);
     }
 
     private static void HandleProviderSelection(AlpmQuestionEventArgs question, bool uiMode = false,
@@ -57,6 +115,7 @@ public static class QuestionHandler
                 // But in UI mode, we usually expect a response
                 // For safety, we could set a default if needed, but the UI shouldn't send empty input
             }
+
             return;
         }
 
@@ -115,6 +174,7 @@ public static class QuestionHandler
             {
                 question.SetResponse(0);
             }
+
             return;
         }
 

@@ -84,6 +84,7 @@ public class PackageManagement(
         _filterListModel = FilterListModel.New(_listStore, _filter);
         _selectionModel = SingleSelection.New(_filterListModel);
         _selectionModel.CanUnselect = true;
+        _selectionModel.Autoselect = false;
         _columnView.SetModel(_selectionModel);
         _groupDropDown = (DropDown)builder.GetObject("grouping_selection")!;
         _detailRevealer = (Revealer)builder.GetObject("detail_revealer")!;
@@ -106,6 +107,7 @@ public class PackageManagement(
         _selectionModel.OnSelectionChanged += (_, _) =>
         {
             var item = _selectionModel.GetSelectedItem();
+            _detailRevealer.SetTransitionType(RevealerTransitionType.SlideLeft);
             if (item is AlpmPackageGObject pkgObj)
             {
                 ShowPackageDetails(pkgObj);
@@ -113,7 +115,6 @@ public class PackageManagement(
             else
             {
                 _detailRevealer.SetRevealChild(false);
-                _detailRevealer.SetVisible(false);
                 _currentDetailPkg = null;
             }
         };
@@ -152,7 +153,7 @@ public class PackageManagement(
         }
 
         var backButton = Button.New();
-        backButton.SetIconName("go-previous-symbolic");
+        backButton.SetIconName("go-next-symbolic");
         backButton.Halign = Align.Start;
         backButton.AddCssClass("flat");
         backButton.TooltipText = "Close details";
@@ -160,31 +161,38 @@ public class PackageManagement(
         {
             _currentDetailPkg = null;
             _selectionModel.UnselectItem(_selectionModel.GetSelected());
+            _detailRevealer.SetTransitionType(RevealerTransitionType.SlideRight);
             _detailRevealer.SetRevealChild(false);
-            _detailRevealer.SetVisible(false);
         };
         _detailBox.Append(backButton);
 
         void AddDetail(string label, string value)
         {
-            var row = Box.New(Orientation.Horizontal, 4);
+            var row = Box.New(Orientation.Horizontal, 12);
+            row.MarginBottom = 4;
             var labelWidget = Label.New(label + ":");
             labelWidget.AddCssClass("dim-label");
             labelWidget.Halign = Align.Start;
             labelWidget.Valign = Align.Start;
-            labelWidget.WidthRequest = 70;
+            labelWidget.WidthRequest = 80;
+            labelWidget.Xalign = 0;
 
             var valueWidget = Label.New(value);
             valueWidget.Halign = Align.Start;
             valueWidget.Wrap = true;
             valueWidget.WrapMode = Pango.WrapMode.WordChar;
-            valueWidget.MaxWidthChars = 20;
+            valueWidget.MaxWidthChars = 30;
             valueWidget.Xalign = 0;
+            valueWidget.Selectable = true;
 
             row.Append(labelWidget);
             row.Append(valueWidget);
             _detailBox.Append(row);
         }
+
+        var headerBox = Box.New(Orientation.Vertical, 4);
+        headerBox.MarginBottom = 16;
+        headerBox.MarginTop = 8;
 
         var iconImage = new Image { PixelSize = 64, Halign = Align.Center, MarginBottom = 8 };
         var iconPath = iconResolverService.GetIconPath(pkg.Name);
@@ -198,20 +206,39 @@ public class PackageManagement(
             iconImage.SetFromIconName("package-x-generic");
         }
 
-        _detailBox.Append(iconImage);
+        headerBox.Append(iconImage);
 
-        AddDetail("Name", pkg.Name);
-        AddDetail("Description", pkg.Description);
+        var nameLabel = Label.New(pkg.Name);
+        nameLabel.AddCssClass("title-2");
+        nameLabel.Halign = Align.Center;
+        headerBox.Append(nameLabel);
+
+        var descLabel = Label.New(pkg.Description);
+        descLabel.AddCssClass("dim-label");
+        descLabel.Halign = Align.Center;
+        descLabel.Wrap = true;
+        descLabel.Justify = Justification.Center;
+        descLabel.MaxWidthChars = 40;
+        headerBox.Append(descLabel);
+
+        _detailBox.Append(headerBox);
+
+        var separator = Separator.New(Orientation.Horizontal);
+        separator.MarginBottom = 16;
+        _detailBox.Append(separator);
+
         AddDetail("Version", pkg.Version);
         AddDetail("Size", SizeHelpers.FormatSize(pkg.InstalledSize));
         if (!string.IsNullOrEmpty(pkg.Url))
         {
-            var row = Box.New(Orientation.Horizontal, 4);
+            var row = Box.New(Orientation.Horizontal, 12);
+            row.MarginBottom = 4;
             var labelWidget = Label.New("URL:");
             labelWidget.AddCssClass("dim-label");
             labelWidget.Halign = Align.Start;
             labelWidget.Valign = Align.Start;
-            labelWidget.WidthRequest = 70;
+            labelWidget.WidthRequest = 80;
+            labelWidget.Xalign = 0;
 
             var valueWidget = Label.New(null);
             var escaped = GLib.Functions.MarkupEscapeText(pkg.Url, -1);
@@ -219,7 +246,7 @@ public class PackageManagement(
             valueWidget.Halign = Align.Start;
             valueWidget.Wrap = true;
             valueWidget.WrapMode = Pango.WrapMode.WordChar;
-            valueWidget.MaxWidthChars = 20;
+            valueWidget.MaxWidthChars = 30;
             valueWidget.Xalign = 0;
 
             row.Append(labelWidget);
@@ -229,36 +256,12 @@ public class PackageManagement(
 
         if (pkg.Depends.Count > 0)
         {
-            var expander = new Expander { Label = $"Depends ({pkg.Depends.Count})" };
-            expander.AddCssClass("dim-label");
-            var depBox = Box.New(Orientation.Vertical, 2);
-            depBox.MarginStart = 12;
-            foreach (var depLabel in pkg.Depends.Select(dep => Label.New(dep)))
-            {
-                depLabel.Halign = Align.Start;
-                depLabel.Xalign = 0;
-                depBox.Append(depLabel);
-            }
-
-            expander.SetChild(depBox);
-            _detailBox.Append(expander);
+            AddChipList("Depends", pkg.Depends);
         }
 
         if (pkg.OptDepends.Count > 0)
         {
-            var optExpander = new Expander { Label = $"Optional Deps ({pkg.OptDepends.Count})" };
-            optExpander.AddCssClass("dim-label");
-            var optDepBox = Box.New(Orientation.Vertical, 2);
-            optDepBox.MarginStart = 12;
-            foreach (var depLabel in pkg.OptDepends.Select(dep => Label.New(dep)))
-            {
-                depLabel.Halign = Align.Start;
-                depLabel.Xalign = 0;
-                optDepBox.Append(depLabel);
-            }
-
-            optExpander.SetChild(optDepBox);
-            _detailBox.Append(optExpander);
+            AddChipList("Optional Deps", pkg.OptDepends, true);
         }
 
         if (pkg.Licenses.Count > 0)
@@ -292,8 +295,50 @@ public class PackageManagement(
             }
         }
 
-        _detailRevealer.SetVisible(true);
         _detailRevealer.SetRevealChild(true);
+        return;
+
+        void AddChipList(string label, IReadOnlyList<string> items, bool isOptional = false)
+        {
+            var expander = new Expander { Label = $"{label} ({items.Count})" };
+            expander.AddCssClass("package-detail-expander");
+            expander.Hexpand = false;
+
+            var flowBox = new FlowBox
+            {
+                MarginStart = 0,
+                MarginTop = 0,
+                MarginBottom = 0,
+                MarginEnd = 0,
+                SelectionMode = SelectionMode.None,
+                ColumnSpacing = 6,
+                RowSpacing = 6,
+                Halign = Align.Start,
+                Valign = Align.Start,
+                MaxChildrenPerLine = isOptional ? 1u : 10u,
+                MinChildrenPerLine = 1
+            };
+
+            foreach (var item in items)
+            {
+                var chip = Label.New(item);
+                chip.AddCssClass("package-chip");
+                chip.Selectable = true;
+                chip.Ellipsize = Pango.EllipsizeMode.End;
+                chip.MaxWidthChars = 25;
+
+                if (isOptional)
+                {
+                    chip.Wrap = true;
+                    chip.WrapMode = Pango.WrapMode.WordChar;
+                    chip.Xalign = 0;
+                }
+                flowBox.Append(chip);
+            }
+
+            expander.SetChild(flowBox);
+            _detailBox.Append(expander);
+        }
     }
 
     private void SetupColumns(ColumnViewColumn checkColumn, ColumnViewColumn nameColumn, ColumnViewColumn sizeColumn,

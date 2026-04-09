@@ -23,11 +23,11 @@ public class ConfigSetCommand : Command<ConfigSetSettings>
         var success = ConfigManager.UpdateConfig(settings.Key, settings.Value);
         if (!success)
         {
-            AnsiConsole.MarkupLine($"[red]Failed to set configuration key: {settings.Key}[/]");
+            AnsiConsole.MarkupLine($"[red]Failed to set configuration key: {settings.Key.EscapeMarkup()}[/]");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[green]{settings.Key}[/] set to [blue]{settings.Value}[/]");
+        AnsiConsole.MarkupLine($"[green]{settings.Key.EscapeMarkup()}[/] set to [blue]{settings.Value.EscapeMarkup()}[/]");
         return 0;
     }
 }

@@ -19,7 +19,7 @@ public class ConfigGetCommand : Command<ConfigGetSettings>
         var value = ConfigManager.GetConfigValue(settings.Key);
         if (value == null)
         {
-            AnsiConsole.MarkupLine($"[red]Unknown configuration key: {settings.Key}[/]");
+            AnsiConsole.MarkupLine($"[red]Unknown configuration key: {settings.Key.EscapeMarkup()}[/]");
             return 1;
         }
 

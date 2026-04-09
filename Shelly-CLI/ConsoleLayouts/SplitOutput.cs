@@ -110,7 +110,7 @@ public static class SplitOutput
         {
             lock (renderLock)
             {
-                consoleLines.Add($"{e.Repository}/{e.PackageName} replaces {string.Join(",", e.Replaces)} packages");
+                consoleLines.Add($"{e.Repository.EscapeMarkup()}/{e.PackageName.EscapeMarkup()} replaces {string.Join(",", e.Replaces.Select(r => r.EscapeMarkup()))} packages");
                 var visible = consoleLines.Skip(Math.Max(0, consoleLines.Count - maxVisibleLines)).ToList();
                 layout["Console"].Update(
                     new Panel(new Markup(string.Join("\n", visible)))
@@ -124,7 +124,7 @@ public static class SplitOutput
         {
             lock (renderLock)
             {
-                consoleLines.Add($"Pacnew stored @ {e.FileLocation}.pacnew");
+                consoleLines.Add($"Pacnew stored @ {e.FileLocation.EscapeMarkup()}.pacnew");
                 var visible = consoleLines.Skip(Math.Max(0, consoleLines.Count - maxVisibleLines)).ToList();
                 layout["Console"].Update(
                     new Panel(new Markup(string.Join("\n", visible)))
@@ -138,7 +138,7 @@ public static class SplitOutput
         {
             lock (renderLock)
             {
-                consoleLines.Add($"Pacnew stored @ {e.FileLocation}.pacsave");
+                consoleLines.Add($"Pacsave stored @ {e.FileLocation.EscapeMarkup()}.pacsave");
                 var visible = consoleLines.Skip(Math.Max(0, consoleLines.Count - maxVisibleLines)).ToList();
                 layout["Console"].Update(
                     new Panel(new Markup(string.Join("\n", visible)))
@@ -160,6 +160,12 @@ public static class SplitOutput
             if (e.QuestionType == AlpmQuestionType.SelectProvider)
             {
                 HandleProviderInConsole(e, consoleLines, maxVisibleLines, layout, liveCtx, renderLock);
+                return;
+            }
+
+            if (e.QuestionType == AlpmQuestionType.SelectOptionalDeps)
+            {
+                HandleOptionalDepsInConsole(e, consoleLines, maxVisibleLines, layout, liveCtx, renderLock);
                 return;
             }
 
@@ -274,6 +280,117 @@ public static class SplitOutput
                     consoleLines.RemoveRange(optionStartIndex, consoleLines.Count - optionStartIndex);
                     consoleLines.Add($"[green]Selected: {question.ProviderOptions[selectedIndex].EscapeMarkup()}[/]");
                     question.SetResponse(selectedIndex);
+
+                    lock (renderLock)
+                    {
+                        var visible = consoleLines
+                            .Skip(Math.Max(0, consoleLines.Count - maxVisibleLines))
+                            .ToList();
+                        layout["Console"].Update(
+                            new Panel(new Markup(string.Join("\n", visible)))
+                                .Header("Console").Expand());
+                        ctx?.Refresh();
+                    }
+
+                    return;
+            }
+        }
+    }
+
+    private static void HandleOptionalDepsInConsole(AlpmQuestionEventArgs question,
+        List<string> consoleLines, int maxVisibleLines, Layout layout, LiveDisplayContext? ctx, object renderLock)
+    {
+        if (question.ProviderOptions is null || question.ProviderOptions.Count == 0)
+        {
+            question.SetResponse(0);
+            return;
+        }
+
+        int selectedIndex = 0;
+        var selected = new HashSet<int>();
+        consoleLines.Add($"[yellow bold]{question.QuestionText.EscapeMarkup()}[/]");
+        consoleLines.Add("[dim]Space = toggle, A = all, N = none, Enter = confirm[/]");
+        int optionStartIndex = consoleLines.Count;
+
+        void RenderSelection()
+        {
+            if (consoleLines.Count > optionStartIndex)
+                consoleLines.RemoveRange(optionStartIndex, consoleLines.Count - optionStartIndex);
+
+            for (int i = 0; i < question.ProviderOptions.Count; i++)
+            {
+                var cursor = i == selectedIndex ? ">" : " ";
+                var check = selected.Contains(i) ? "[green]✓[/]" : "[dim]○[/]";
+                var style = i == selectedIndex ? "[bold green]" : "[white]";
+                consoleLines.Add($" {cursor} {check} {style}{question.ProviderOptions[i].EscapeMarkup()}[/]");
+            }
+
+            lock (renderLock)
+            {
+                var visible = consoleLines
+                    .Skip(Math.Max(0, consoleLines.Count - maxVisibleLines))
+                    .ToList();
+                layout["Console"].Update(
+                    new Panel(new Markup(string.Join("\n", visible)))
+                        .Header("Console").Expand());
+                ctx?.Refresh();
+            }
+        }
+
+        RenderSelection();
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            switch (key.Key)
+            {
+                case ConsoleKey.UpArrow:
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                    RenderSelection();
+                    break;
+
+                case ConsoleKey.DownArrow:
+                    selectedIndex = Math.Min(question.ProviderOptions.Count - 1, selectedIndex + 1);
+                    RenderSelection();
+                    break;
+
+                case ConsoleKey.Spacebar:
+                    if (!selected.Remove(selectedIndex))
+                        selected.Add(selectedIndex);
+                    RenderSelection();
+                    break;
+
+                case ConsoleKey.A:
+                    for (int i = 0; i < question.ProviderOptions.Count; i++)
+                        selected.Add(i);
+                    RenderSelection();
+                    break;
+
+                case ConsoleKey.N:
+                    selected.Clear();
+                    RenderSelection();
+                    break;
+
+                case ConsoleKey.Enter:
+                    int bitmask = 0;
+                    foreach (var idx in selected)
+                        bitmask |= (1 << idx);
+
+                    consoleLines.RemoveRange(optionStartIndex, consoleLines.Count - optionStartIndex);
+                    if (selected.Count == 0)
+                    {
+                        consoleLines.Add("[dim]No optional dependencies selected.[/]");
+                    }
+                    else
+                    {
+                        var names = selected
+                            .OrderBy(i => i)
+                            .Select(i => question.ProviderOptions[i])
+                            .ToList();
+                        consoleLines.Add($"[green]Selected: {string.Join(", ", names.Select(n => n.EscapeMarkup()))}[/]");
+                    }
+
+                    question.SetResponse(bitmask);
 
                     lock (renderLock)
                     {

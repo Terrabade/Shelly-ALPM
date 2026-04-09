@@ -78,6 +78,8 @@
             <Type Name="Shelly_CLI.Commands.Utility.CheckPackageUpdatesNonRootSettings" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Utility.Export" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Utility.ExportSettings" Dynamic="Required All"/>
+            <Type Name="Shelly_CLI.Commands.Utility.CacheClean" Dynamic="Required All"/>
+            <Type Name="Shelly_CLI.Commands.Utility.CacheCleanSettings" Dynamic="Required All"/>
             <!-- Configuration Commands-->
             <Type Name="Shelly_CLI.Commands.Config.Restore" Dynamic="Required All"/>
             <Type Name="Shelly_CLI.Commands.Config.SetParallelDownloads" Dynamic="Required All"/>

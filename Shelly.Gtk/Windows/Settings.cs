@@ -26,12 +26,12 @@ public class Settings(
     private static string? _cachedLatestVersion = null!;
     private static DateTime _lastVersionCheck = DateTime.MinValue;
     private static readonly TimeSpan VersionCheckInterval = TimeSpan.FromMinutes(5);
-    
+
     private static readonly HttpClient HttpClient = new()
     {
         DefaultRequestHeaders = { UserAgent = { new("Shelly-ALPM", null) } }
     };
-    
+
     public event Action? NavigationToHomeRequested;
 
     public Widget CreateWindow()
@@ -41,14 +41,16 @@ public class Settings(
 
         _config = configService.LoadConfig();
         _parentOverlay = (Overlay)builder.GetObject("SettingsOverlay")!;
-        
+
         SetupAurSwitch("aur_switch", _config.AurEnabled, (v) => _config.AurEnabled = v, builder);
         SetupFlatpakSwitch("flatpak_switch", _config.FlatPackEnabled, (v) => _config.FlatPackEnabled = v, builder);
         SetupTraySwitch("tray_switch", _config.TrayEnabled, (v) => _config.TrayEnabled = v, builder);
-        SetupWeeklyScheduleSwitch("daily_schedule", _config.UseWeeklySchedule, (v) => _config.UseWeeklySchedule = v, builder);
+        SetupWeeklyScheduleSwitch("daily_schedule", _config.UseWeeklySchedule, (v) => _config.UseWeeklySchedule = v,
+            builder);
         SetupSwitch("no_confirm_switch", _config.NoConfirm, (v) => _config.NoConfirm = v, builder);
         SetupSwitch("webview_switch", _config.WebViewEnabled, (v) => _config.WebViewEnabled = v, builder);
         SetupSwitch("shelly_icons_switch", _config.ShellyIconsEnabled, (v) => _config.ShellyIconsEnabled = v, builder);
+        SetupSwitch("menu_navigation", _config.UseOldMenu, (v) => _config.UseOldMenu = v, builder);
 
         var parallelDownloadsSpin = (SpinButton)builder.GetObject("parallel_downloads_spin")!;
         parallelDownloadsSpin.Value = _config.ParallelDownloadCount;
@@ -73,7 +75,7 @@ public class Settings(
         SetupDayCheckbox("day_thu_check", DayOfWeek.Thursday, builder);
         SetupDayCheckbox("day_fri_check", DayOfWeek.Friday, builder);
         SetupDayCheckbox("day_sat_check", DayOfWeek.Saturday, builder);
-        
+
         var hourSpin = (SpinButton)builder.GetObject("update_hour_spin")!;
         var minuteSpin = (SpinButton)builder.GetObject("update_minute_spin")!;
 
@@ -103,14 +105,14 @@ public class Settings(
 
         var removeLockButton = (Button)builder.GetObject("rm_db_lock_button")!;
         removeLockButton.OnClicked += (s, e) => { _ = RemoveDbLockAsync(); };
-        
+
         var viewChangelogButton = (Button)builder.GetObject("changelog_button")!;
         viewChangelogButton.OnClicked += async (s, e) => { await ShowAppChangelogAsync(); };
 
         var versionLabel = (Label)builder.GetObject("version_label")!;
         versionLabel.SetLabel(
             $"v{System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "Unknown"}");
-        
+
 
         return _box;
     }
@@ -170,7 +172,7 @@ public class Settings(
             {
                 TrayStartService.End();
             }
-            
+
             weeklyScheduleSwitchBox.Visible = e.State;
             trayIntervalBox.Visible = e.State && !weeklyScheduleSwitch.Active;
             weeklyScheduleBox.Visible = e.State && weeklyScheduleSwitch.Active;
@@ -190,7 +192,7 @@ public class Settings(
         var traySwitch = (Switch)builder.GetObject("tray_switch")!;
 
         sw.Active = initialValue;
-        
+
         if (traySwitch.Active)
         {
             trayIntervalBox.Visible = !initialValue;
@@ -247,7 +249,7 @@ public class Settings(
                 SaveConfig();
                 return false;
             }
-            
+
             _ = HandleFlatpakMissingAsync(sw, updateAction);
             return true;
         };
@@ -280,6 +282,7 @@ public class Settings(
                 sw.Active = false;
                 sw.State = false;
             }
+
             return false;
         });
     }
@@ -326,6 +329,8 @@ public class Settings(
                 finally
                 {
                     lockoutService.Hide();
+                    genericQuestionService.RaiseToastMessage(
+                        new ToastMessageEventArgs("Reboot required to complete installation."));
                 }
             }
             else
@@ -386,7 +391,7 @@ public class Settings(
             Console.Error.WriteLine($"Failed to remove database lock: {result.Error}");
         }
     }
-    
+
     private async Task ShowAppChangelogAsync()
     {
         if (_parentOverlay is null)
@@ -396,17 +401,17 @@ public class Settings(
                 new ToastMessageEventArgs("Overlay not available"));
             return;
         }
-        
+
         try
         {
-            if (_cachedReleaseList is not null && 
+            if (_cachedReleaseList is not null &&
                 DateTime.UtcNow - _lastVersionCheck < VersionCheckInterval)
             {
                 Console.WriteLine("Cached releases used (skipping version check)");
                 ReleaseNotesDialog.ShowReleaseHistoryDialog(_parentOverlay, _cachedReleaseList);
                 return;
             }
-            
+
             HttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Shelly-ALPM");
 
             var url = "https://api.github.com/repos/Seafoam-Labs/Shelly-ALPM/releases";
@@ -417,14 +422,14 @@ public class Settings(
                 .TryGetProperty("tag_name", out var tagProp)
                 ? tagProp.GetString()
                 : null;
-            
+
             if (_cachedReleaseList is not null && latestTag == _cachedLatestVersion)
             {
                 Console.WriteLine("Cached Releases used");
                 ReleaseNotesDialog.ShowReleaseHistoryDialog(_parentOverlay, _cachedReleaseList);
                 return;
             }
-            
+
             var json = await HttpClient.GetStringAsync(url);
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
@@ -490,4 +495,3 @@ public class Settings(
     {
     }
 }
-

@@ -21,14 +21,14 @@ public class KeyringLsignCommand : Command<KeyringSettings>
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[yellow]Locally signing keys: {string.Join(", ", settings.Keys)}...[/]");
+        AnsiConsole.MarkupLine($"[yellow]Locally signing keys: {string.Join(", ", settings.Keys.Select(k => k.EscapeMarkup()))}...[/]");
 
         foreach (var key in settings.Keys)
         {
             var result = PacmanKeyRunner.Run($"--lsign-key {key}");
             if (result != 0)
             {
-                AnsiConsole.MarkupLine($"[red]Failed to sign key: {key}[/]");
+                AnsiConsole.MarkupLine($"[red]Failed to sign key: {key.EscapeMarkup()}[/]");
                 return result;
             }
         }

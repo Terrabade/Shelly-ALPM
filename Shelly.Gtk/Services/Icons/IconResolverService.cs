@@ -13,7 +13,7 @@ public class IconResolverService : IIconResolverService
 
     private const string IconPath = "/usr/share/swcatalog";
     private const string LegacyIconPath = "/usr/share/app-info";
-    private string _shellyStreamPath =  Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/shelly-icons/shelly-icon-stream-main/");
+    private string _shellyStreamPath =  Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/shelly-icons/");
 
     private readonly ConcurrentDictionary<string, string> _iconMap = [];
     private readonly Dictionary<string, List<string>> _shellyStreamManifest = [];

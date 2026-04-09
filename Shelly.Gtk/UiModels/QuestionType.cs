@@ -8,5 +8,6 @@ public enum QuestionType
     CorruptedPkg = 8,
     ImportKey = 16,
     SelectProvider = 32,
-    RemovePkgs = 64
+    RemovePkgs = 64,
+    SelectOptionalDeps = 256
 }

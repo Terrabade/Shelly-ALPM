@@ -40,27 +40,27 @@ public class PackageInformationCommand : Command<PackageInformationSettings>
 
         if (package is null)
         {
-            AnsiConsole.MarkupLine($"[red]No package named {settings.Packages[0]} found[/]");
+            AnsiConsole.MarkupLine($"[red]No package named {settings.Packages[0].EscapeMarkup()} found[/]");
             return 0;
         }
 
-        WriteLeftAlignMarkup($"[green]Name: {package.Name}[/]");
-        WriteLeftAlignMarkup($"[blue]Version {package.Version}[/]");
-        WriteLeftAlignMarkup($"[blue]Description: {package.Description}[/]");
-        WriteLeftAlignMarkup($"[blue]URL: {package.Url}[/]");
-        WriteLeftAlignMarkup($"[blue]Licenses: {string.Join(',', package.Licenses)}[/]");
-        WriteLeftAlignMarkup($"[blue]Groups: {string.Join(',', package.Groups)}[/]");
-        WriteLeftAlignMarkup($"[blue]Provides: {string.Join(',', package.Provides)}[/]");
-        WriteLeftAlignMarkup($"[blue]Depends On: {string.Join(',', package.Depends)}[/]");
-        WriteLeftAlignMarkup($"[blue]Optional Depends: {string.Join(',', package.OptDepends)}[/]");
-        WriteLeftAlignMarkup($"[blue]Required By: {string.Join(',', package.RequiredBy)}[/]");
-        WriteLeftAlignMarkup($"[blue]Conflicts With: {string.Join(',', package.Conflicts)}[/]");
-        WriteLeftAlignMarkup($"[blue]Replaces: {string.Join(',', package.Replaces)}[/]");
+        WriteLeftAlignMarkup($"[green]Name: {package.Name.EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Version {package.Version.EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Description: {package.Description.EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]URL: {package.Url.EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Licenses: {string.Join(',', package.Licenses).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Groups: {string.Join(',', package.Groups).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Provides: {string.Join(',', package.Provides).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Depends On: {string.Join(',', package.Depends).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Optional Depends: {string.Join(',', package.OptDepends).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Required By: {string.Join(',', package.RequiredBy).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Conflicts With: {string.Join(',', package.Conflicts).EscapeMarkup()}[/]");
+        WriteLeftAlignMarkup($"[blue]Replaces: {string.Join(',', package.Replaces).EscapeMarkup()}[/]");
         WriteLeftAlignMarkup($"[blue]Installed Size:{package.InstalledSize} bytes[/]");
         var installDate = package.InstallDate.HasValue
             ? package.InstallDate.Value.ToLongDateString()
             : "Not Installed";
-        WriteLeftAlignMarkup($"[blue]Install Date: {installDate}[/]");
+        WriteLeftAlignMarkup($"[blue]Install Date: {installDate.EscapeMarkup()}[/]");
         WriteLeftAlignMarkup($"[blue]Install Reason: {package.InstallReason}[/]");
         return 0;
     }
