@@ -26,7 +26,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
             AnsiConsole.MarkupLine("[red]No packages specified.[/]");
             return 1;
         }
-
+        RootElevator.EnsureRootExectuion();
         var packageList = settings.Packages.ToList();
 
         AnsiConsole.MarkupLine($"[yellow]AUR packages to install:[/] {string.Join(", ", packageList.Select(p => p.EscapeMarkup()))}");
@@ -42,7 +42,7 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
 
         try
         {
-            RootElevator.EnsureRootExectuion();
+     
             manager = new AurPackageManager();
             await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
             object renderLock = new();
@@ -141,7 +141,8 @@ public class AurInstallCommand : AsyncCommand<AurInstallSettings>
             manager.Dispose();
             manager = new AurPackageManager();
             await manager.Initialize(root: true, useChroot: settings.UseChroot, noCheck: !settings.Check);
-            var missingPackages = await GetMissingPackages(manager, packageList);
+            var packageNames = packageList.Select(x => x.Split("-")[0]).ToList();
+            var missingPackages = await GetMissingPackages(manager, packageNames);
             if (missingPackages.Count > 0)
             {
                 AnsiConsole.MarkupLine(

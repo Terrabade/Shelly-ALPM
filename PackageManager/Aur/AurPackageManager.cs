@@ -375,20 +375,64 @@ public class AurPackageManager(string? configPath = null)
 
             // Backup PKGBUILD to PreviousVersions folder
             var previousVersionsPath = System.IO.Path.Combine(tempPath, "PreviousVersions");
-            System.IO.Directory.CreateDirectory(previousVersionsPath);
             var pkgbuildPath = System.IO.Path.Combine(tempPath, "PKGBUILD");
             if (System.IO.File.Exists(pkgbuildPath))
             {
-                var existingBackups = System.IO.Directory.GetFiles(previousVersionsPath, "PKGBUILD.*");
+                // Create directory as the non-root user to avoid permission issues
+                var mkdirProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "sudo",
+                        Arguments = $"-u {user} mkdir -p {previousVersionsPath}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                mkdirProcess.Start();
+                await mkdirProcess.WaitForExitAsync();
+
+                var existingBackups = System.IO.Directory.Exists(previousVersionsPath)
+                    ? System.IO.Directory.GetFiles(previousVersionsPath, "PKGBUILD.*")
+                    : Array.Empty<string>();
                 var nextNumber = existingBackups.Length + 1;
                 var backupPath = System.IO.Path.Combine(previousVersionsPath, $"PKGBUILD.{nextNumber}");
-                System.IO.File.Copy(pkgbuildPath, backupPath, overwrite: true);
+
+                var cpProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "sudo",
+                        Arguments = $"-u {user} cp {pkgbuildPath} {backupPath}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                cpProcess.Start();
+                await cpProcess.WaitForExitAsync();
             }
 
             // Remove any existing package files before building
             foreach (var oldPkgFile in System.IO.Directory.GetFiles(tempPath, "*.pkg.tar.*"))
             {
-                System.IO.File.Delete(oldPkgFile);
+                var rmPkgProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "sudo",
+                        Arguments = $"-u {user} rm -f {oldPkgFile}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                rmPkgProcess.Start();
+                await rmPkgProcess.WaitForExitAsync();
             }
 
             if (_useChroot)
@@ -755,63 +799,67 @@ public class AurPackageManager(string? configPath = null)
     {
         try
         {
-            var url = $"https://aur.archlinux.org/cgit/aur.git/snapshot/{packageName}.tar.gz";
             var user = Environment.GetEnvironmentVariable("SUDO_USER") ?? Environment.UserName;
             var home = $"/home/{user}";
             var tempPath = System.IO.Path.Combine(home, ".cache", "Shelly", packageName);
 
-            // Download the package tarball
-            var response = await _httpClient.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
+            if (System.IO.Directory.Exists(System.IO.Path.Combine(tempPath, ".git")))
             {
-                return false;
-            }
-
-            // Create temp directory if it doesn't exist (run as non-root user)
-            if (!System.IO.Directory.Exists(tempPath))
-            {
-                var mkdirProcess = new System.Diagnostics.Process
+                // Already cloned — pull latest
+                var pullProcess = new System.Diagnostics.Process
                 {
                     StartInfo = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = "sudo",
-                        Arguments = $"-u {user} mkdir -p {tempPath}",
+                        Arguments = $"-u {user} git pull",
+                        WorkingDirectory = tempPath,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
                         CreateNoWindow = true
                     }
                 };
-                mkdirProcess.Start();
-                await mkdirProcess.WaitForExitAsync();
+                pullProcess.Start();
+                await pullProcess.WaitForExitAsync();
+                if (pullProcess.ExitCode != 0) return false;
             }
-
-            // Save the tarball
-            var tarballPath = System.IO.Path.Combine(tempPath, $"{packageName}.tar.gz");
-            await using (var fileStream = System.IO.File.Create(tarballPath))
+            else
             {
-                await response.Content.CopyToAsync(fileStream);
-            }
-
-            // Extract the tarball (run as non-root user)
-            var extractProcess = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
+                // Remove directory if it exists but isn't a git repo
+                if (System.IO.Directory.Exists(tempPath))
                 {
-                    FileName = "sudo",
-                    Arguments = $"-u {user} tar -xzf {tarballPath} -C {tempPath} --strip-components=1",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    var rmProcess = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "rm",
+                            Arguments = $"-rf {tempPath}",
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        }
+                    };
+                    rmProcess.Start();
+                    await rmProcess.WaitForExitAsync();
                 }
-            };
-            extractProcess.Start();
-            await extractProcess.WaitForExitAsync();
 
-            if (extractProcess.ExitCode != 0)
-            {
-                return false;
+                // Clone the AUR git repository
+                var cloneProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "sudo",
+                        Arguments = $"-u {user} git clone https://aur.archlinux.org/{packageName}.git {tempPath}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                cloneProcess.Start();
+                await cloneProcess.WaitForExitAsync();
+                if (cloneProcess.ExitCode != 0) return false;
             }
 
             // Verify PKGBUILD exists
