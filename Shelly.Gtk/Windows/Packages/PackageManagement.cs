@@ -340,13 +340,13 @@ public class PackageManagement(
                     var optDepName = item.Split(':').First().Trim();
                     var isInstalled = _installedPackageNames.Contains(optDepName);
 
-                    var installedLabel = Label.New("installed");
-                    installedLabel.AddCssClass("success");
-                    installedLabel.AddCssClass("caption");
-                    installedLabel.Visible = isInstalled;
+                    var installedIcon = Image.NewFromIconName("object-select-symbolic");
+                    installedIcon.AddCssClass("success");
+                    installedIcon.PixelSize = 16;
+                    installedIcon.Visible = isInstalled;
 
                     chipBox.Append(chip);
-                    chipBox.Append(installedLabel);
+                    chipBox.Append(installedIcon);
                     flowBox.Append(chipBox);
                 }
                 else
