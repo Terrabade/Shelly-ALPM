@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -928,7 +929,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         return Marshal.PtrToStringUTF8(StrError(error)) ?? $"Unknown error ({error})";
     }
 
-    public Task InstallPackages(List<string> packageNames,
+    public Task<bool> InstallPackages(List<string> packageNames,
         AlpmTransFlag flags = AlpmTransFlag.None)
     {
         if (_handle == IntPtr.Zero) Initialize();
@@ -1007,8 +1008,9 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (pkgPtr == IntPtr.Zero && groupPkgs == null)
             {
-                Console.Error.WriteLine($"[ALPM_ERROR]Package '{packageName}' not found in any sync database.");
-                throw new Exception($"Package '{packageName}' not found in any sync database.");
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Package '{packageName}' not found in any sync database."));
+                return Task.FromResult(false);
             }
 
             if (pkgPtr != IntPtr.Zero)
@@ -1022,7 +1024,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             }
         }
 
-        if (pkgPtrs.Count == 0) return Task.CompletedTask;
+        if (pkgPtrs.Count == 0) return Task.FromResult(false);
 
         // If we are doing a DbOnly install, we should also skip dependency checks, 
         // extraction, and signature/checksum validation to avoid requirement for the physical package file.
@@ -1059,9 +1061,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         // Initialize transaction
         if (TransInit(_handle, flags) != 0)
         {
-            Console.Error.WriteLine(
-                $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-            throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+            var err = ErrorNumber(_handle);
+            ErrorEvent?.Invoke(this,
+                new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+            return Task.FromResult(false);
         }
 
         try
@@ -1078,24 +1081,24 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
                         continue;
                     }
 
-                    throw new Exception($"Failed to add a package to transaction: {GetErrorMessage(err)}");
+                    ErrorEvent?.Invoke(this,
+                        new AlpmErrorEventArgs($"Failed to add package to transaction: {GetErrorMessage(err)}"));
+                    return Task.FromResult(false); // or just return Task.CompletedTask if keeping Task
                 }
             }
 
             // Prepare transaction
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
 
             // Commit transaction
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
         }
         finally
@@ -1104,10 +1107,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             TransRelease(_handle);
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
-    public Task RemovePackages(List<string> packageNames,
+    public Task<bool> RemovePackages(List<string> packageNames,
         AlpmTransFlag flags = AlpmTransFlag.None)
     {
         var heldPackagesBeingRemove = packageNames.Intersect(_config.HoldPkg).ToList();
@@ -1128,8 +1131,8 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (args.Response == 0)
             {
-                Console.Error.WriteLine("[ALPM_ERROR] Held Package removal cancelled.");
-                return Task.CompletedTask;
+                ErrorEvent?.Invoke(this, new AlpmErrorEventArgs("Held Package removal cancelled."));
+                return Task.FromResult(false);
             }
         }
 
@@ -1196,15 +1199,16 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (pkgPtr == IntPtr.Zero && groupPkgs == null)
             {
-                Console.Error.WriteLine($"[ALPM_ERROR]Package '{packageName}' not found in local database.");
-                throw new Exception($"Package '{packageName}' not found in local database.");
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Package '{packageName}' not found in local database."));
+                return Task.FromResult(false);
             }
 
             if (pkgPtr != IntPtr.Zero) pkgPtrs.Add(pkgPtr);
             if (groupPkgs != null) pkgPtrs.AddRange(groupPkgs);
         }
 
-        if (pkgPtrs.Count == 0) return Task.CompletedTask;
+        if (pkgPtrs.Count == 0) return Task.FromResult(true);
 
         // If we are doing a DbOnly install, we should also skip dependency checks, 
         // extraction, and signature/checksum validation to avoid requirement for the physical package file.
@@ -1217,9 +1221,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         // Initialize transaction
         if (TransInit(_handle, flags) != 0)
         {
-            Console.Error.WriteLine(
-                $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-            throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+            var err = ErrorNumber(_handle);
+            ErrorEvent?.Invoke(this,
+                new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+            return Task.FromResult(false);
         }
 
         try
@@ -1228,29 +1233,26 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             {
                 if (RemovePkg(_handle, pkgPtr) != 0)
                 {
-                    // Note: In libalpm, if one fails, we might want to know which one, 
-                    // but here we just throw an exception for the first failure.
-                    Console.Error.WriteLine(
-                        $"[ALPM_ERROR]Failed to remove package from transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                    throw new Exception(
-                        $"Failed to add a package to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                    var err = ErrorNumber(_handle);
+                    ErrorEvent?.Invoke(this,
+                        new AlpmErrorEventArgs(
+                            $"Failed to add package removal to transaction: {GetErrorMessage(err)}"));
+                    return Task.FromResult(false); // or just return Task.CompletedTask if keeping Task
                 }
             }
 
             // Prepare transaction
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false); // or just return Task.CompletedTask if keeping Task
             }
 
             // Commit transaction
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
         }
         finally
@@ -1259,10 +1261,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             TransRelease(_handle);
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
-    public async Task SyncSystemUpdate(AlpmTransFlag flags = AlpmTransFlag.None)
+    public async Task<bool> SyncSystemUpdate(AlpmTransFlag flags = AlpmTransFlag.None)
     {
         if (_handle == IntPtr.Zero) Initialize();
         var syncDbsPtr = GetSyncDbs(_handle);
@@ -1297,39 +1299,43 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             await Task.WhenAll(downloadTasks);
             if (TransInit(_handle, flags) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                var err = ErrorNumber(_handle);
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+                return false;
             }
 
-            if (SyncSysupgrade(_handle, false) != 0) throw new Exception(GetErrorMessage(ErrorNumber(_handle)));
+            if (SyncSysupgrade(_handle, false) != 0)
+            {
+                ErrorEvent?.Invoke(this, new AlpmErrorEventArgs(GetErrorMessage(ErrorNumber(_handle))));
+                return false;
+            }
+
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
 
             CheckTransactionReplaces(_handle);
 
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[ALPM_ERROR]Failed to initialize transaction: {ex.Message}");
-            throw new Exception($"Failed to initialize transaction: {ex.Message}");
+            ErrorEvent?.Invoke(this, new AlpmErrorEventArgs(ex.Message));
+            return false;
         }
         finally
         {
             _ = TransRelease(_handle);
         }
+
+        return true;
     }
 
     private void CheckTransactionReplaces(IntPtr handle)
@@ -1348,7 +1354,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         }
     }
 
-    public Task InstallLocalPackage(string path, AlpmTransFlag flags = AlpmTransFlag.None)
+    public Task<bool> InstallLocalPackage(string path, AlpmTransFlag flags = AlpmTransFlag.None)
     {
         if (_handle == IntPtr.Zero) Initialize();
 
@@ -1357,18 +1363,19 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             out IntPtr pkgPtr);
         if (result != 0 || pkgPtr == IntPtr.Zero)
         {
-            Console.Error.WriteLine(
-                $"[ALPM_ERROR]Failed to load package from '{path}': {GetErrorMessage(ErrorNumber(_handle))}");
-            throw new Exception($"Failed to load package from '{path}': {GetErrorMessage(ErrorNumber(_handle))}");
+            ErrorEvent?.Invoke(this, new AlpmErrorEventArgs(
+                $"Failed to load package from '{path}': {GetErrorMessage(ErrorNumber(_handle))}"));
+            return Task.FromResult(false);
         }
 
         // 2. Initialize transaction
         if (TransInit(_handle, flags) != 0)
         {
             _ = PkgFree(pkgPtr);
-            Console.Error.WriteLine(
-                $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-            throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+            var err = ErrorNumber(_handle);
+            ErrorEvent?.Invoke(this,
+                new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+            return Task.FromResult(false);
         }
 
         try
@@ -1377,32 +1384,32 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             if (AddPkg(_handle, pkgPtr) != 0)
             {
                 _ = PkgFree(pkgPtr);
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to add package to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to add package to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                var err = ErrorNumber(_handle);
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Failed to add package to transaction: {GetErrorMessage(err)}"));
+                return Task.FromResult(false);
             }
 
             // 4. Prepare transaction
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to prepare transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
 
             // 5. Commit transaction
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to commit transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
         }
         catch (Exception ex)
         {
             _ = PkgFree(pkgPtr);
-            Console.Error.WriteLine($"[ALPM_ERROR]Failed to initialize transaction: {ex.Message}");
-            throw new Exception($"Failed to initialize transaction: {ex.Message}");
+            ErrorEvent?.Invoke(this,
+                new AlpmErrorEventArgs($"Encountered an error during local package installation: {ex.Message}"));
+            return Task.FromResult(false);
         }
         finally
         {
@@ -1410,7 +1417,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             Refresh();
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
     public string GetPackageNameFromProvides(string provides, AlpmTransFlag flags = AlpmTransFlag.None)
@@ -1475,7 +1482,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         return null;
     }
 
-    public Task InstallDependenciesOnly(string packageName,
+    public Task<bool> InstallDependenciesOnly(string packageName,
         bool includeMakeDeps = false,
         AlpmTransFlag flags = AlpmTransFlag.None)
     {
@@ -1498,8 +1505,9 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
         if (pkgPtr == IntPtr.Zero)
         {
-            Console.WriteLine($"Package '{packageName}' not found");
-            return Task.CompletedTask;
+            ErrorEvent?.Invoke(this,
+                new AlpmErrorEventArgs($"Package '{packageName}' not found in any sync database."));
+            return Task.FromResult(false);
         }
 
         var dependencies = GetDependencyList(GetPkgDepends(pkgPtr));
@@ -1515,10 +1523,10 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         var installedPackages = GetInstalledPackages().ToDictionary(x => x.Name, x => x.Version);
         var dependencyToInstall = dependencies.Where(x => !installedPackages.ContainsKey(x)).ToList();
 
-        if (dependencyToInstall.Count == 0) return Task.CompletedTask;
+        if (dependencyToInstall.Count == 0) return Task.FromResult(true);
 
-        InstallPackages(dependencyToInstall, flags);
-        return Task.CompletedTask;
+        return InstallPackages(dependencyToInstall, flags);
+
     }
 
     public void Refresh()
@@ -1532,7 +1540,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         Initialize();
     }
 
-    public void UpdatePackages(List<string> packageNames,
+    public Task<bool> UpdatePackages(List<string> packageNames,
         AlpmTransFlag flags = AlpmTransFlag.None)
     {
         List<IntPtr> pkgPtrs = [];
@@ -1578,39 +1586,41 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (TransInit(_handle, flags) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs(
+                        $"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}"));
+                return Task.FromResult(false);
             }
 
             failedPkgPtrs.AddRange(pkgPtrs.Where(pkgPtr => AddPkg(_handle, pkgPtr) != 0));
 
             // Check if there are any packages to add or remove before preparing/committing
+            // Not sure why I'm running this check but this method absolutely shouldn't be used so i'm using the bare
+            // minimum of work here.
             if (TransGetAdd(_handle) == IntPtr.Zero && TransGetRemove(_handle) == IntPtr.Zero)
             {
-                return; // Nothing to do, considered successful
+                return Task.FromResult(true);
+                // Nothing to do, considered successful
             }
 
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
 
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return Task.FromResult(false);
             }
         }
         finally
         {
             _ = TransRelease(_handle);
         }
+
+        return Task.FromResult(true);
     }
 
     public bool UpdateSinglePackage(string packageName,
@@ -1623,20 +1633,24 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         {
             if (TransInit(_handle, flags) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                var err = ErrorNumber(_handle);
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+                return false;
             }
 
             var pkgPtr = DbGetPkg(GetLocalDb(_handle), packageName);
             if (AddPkg(_handle, pkgPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to add package '{packageName}' to transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to mark system upgrade: {GetErrorMessage(ErrorNumber(_handle))}");
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs(
+                        $"Failed to add package '{packageName}' to transaction: {GetErrorMessage(ErrorNumber(_handle))}"));
+                return false;
             }
 
             // Check if there are any packages to add or remove before preparing/committing
+            // Not sure why I'm running this check but this method absolutely shouldn't be used so i'm using the bare
+            // minimum of work here.
             if (TransGetAdd(_handle) == IntPtr.Zero && TransGetRemove(_handle) == IntPtr.Zero)
             {
                 return true; // Nothing to do, considered successful
@@ -1644,26 +1658,22 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
 
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
-
-            return true;
         }
         finally
         {
             _ = TransRelease(_handle);
         }
+
+        return true;
     }
 
     public bool UpdateAll(AlpmTransFlag flags = AlpmTransFlag.NoScriptlet | AlpmTransFlag.NoHooks)
@@ -1675,15 +1685,16 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         {
             if (TransInit(_handle, flags) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to initialize transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                var err = ErrorNumber(_handle);
+                ErrorEvent?.Invoke(this,
+                    new AlpmErrorEventArgs($"Failed to initialize transaction: {GetErrorMessage(err)}"));
+                return false;
             }
 
             if (SyncSysupgrade(_handle, false) != 0)
             {
-                Console.Error.WriteLine($"[ALPM_ERROR]Failed to sync system: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception($"Failed to mark system upgrade: {GetErrorMessage(ErrorNumber(_handle))}");
+                ErrorEvent?.Invoke(this, new AlpmErrorEventArgs(GetErrorMessage(ErrorNumber(_handle))));
+                return false;
             }
 
             // Check if there are any packages to add or remove before preparing/committing
@@ -1694,26 +1705,22 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
 
             if (TransPrepare(_handle, out var dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to prepare system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
 
             if (TransCommit(_handle, out dataPtr) != 0)
             {
-                Console.Error.WriteLine(
-                    $"[ALPM_ERROR]Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
-                throw new Exception(
-                    $"Failed to commit system upgrade transaction: {GetErrorMessage(ErrorNumber(_handle))}");
+                HandleErrorMessage(dataPtr, ErrorNumber(_handle));
+                return false;
             }
-
-            return true;
         }
         finally
         {
             _ = TransRelease(_handle);
         }
+
+        return true;
     }
 
     public void Dispose()
