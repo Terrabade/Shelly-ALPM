@@ -473,7 +473,7 @@ public class PackageManagement(
     {
         if (obj is AlpmPackageGObject pkgObj && pkgObj.Package != null)
         {
-            if (_selectedGroup != "Any" && !pkgObj.Package.Groups.Contains(_selectedGroup))
+            if (_selectedGroup != "Any" && !(pkgObj.Package.Groups?.Contains(_selectedGroup) ?? false))
             {
                 return false;
             }
