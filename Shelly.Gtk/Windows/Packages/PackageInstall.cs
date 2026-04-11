@@ -62,6 +62,7 @@ public class PackageInstall(
     private Revealer _detailRevealer = null!;
     private Box _detailBox = null!;
     private AlpmPackageGObject? _currentDetailPkg;
+    private HashSet<string> _installedPackageNames = [];
 
     public Widget CreateWindow()
     {
@@ -330,20 +331,43 @@ public class PackageInstall(
 
             foreach (var item in items)
             {
-                var chip = Label.New(item);
-                chip.AddCssClass("package-chip");
-                chip.Selectable = true;
-                chip.Ellipsize = Pango.EllipsizeMode.End;
-                chip.MaxWidthChars = 25;
-
                 if (isOptional)
                 {
-                    chip.Wrap = true;
-                    chip.WrapMode = Pango.WrapMode.WordChar;
-                    chip.Xalign = 0;
-                }
+                    var optDepName = item.Split(':').First().Trim();
+                    var isInstalled = _installedPackageNames.Contains(optDepName);
 
-                flowBox.Append(chip);
+                    var escapedItem = GLib.Functions.MarkupEscapeText(item, -1);
+
+                    var chipBox = Box.New(Orientation.Horizontal, 4);
+                    chipBox.AddCssClass("package-chip");
+                    chipBox.Valign = Align.Center;
+
+                    var checkIcon = Image.NewFromIconName("object-select-symbolic");
+                    checkIcon.PixelSize = 16;
+                    checkIcon.Visible = isInstalled;
+
+                    var chipLabel = Label.New(string.Empty);
+                    chipLabel.SetMarkup($"<span size='small'>{escapedItem}</span>");
+                    chipLabel.Selectable = true;
+                    chipLabel.Ellipsize = Pango.EllipsizeMode.End;
+                    chipLabel.MaxWidthChars = 25;
+                    chipLabel.Wrap = true;
+                    chipLabel.WrapMode = Pango.WrapMode.WordChar;
+                    chipLabel.Xalign = 0;
+
+                    chipBox.Append(checkIcon);
+                    chipBox.Append(chipLabel);
+                    flowBox.Append(chipBox);
+                }
+                else
+                {
+                    var chip = Label.New(item);
+                    chip.AddCssClass("package-chip");
+                    chip.Selectable = true;
+                    chip.Ellipsize = Pango.EllipsizeMode.End;
+                    chip.MaxWidthChars = 25;
+                    flowBox.Append(chip);
+                }
             }
 
             expander.SetChild(flowBox);
@@ -510,6 +534,7 @@ public class PackageInstall(
             _packageGObjectRefs.Clear();
             _detailRevealer.SetRevealChild(false);
             _currentDetailPkg = null;
+            _installedPackageNames.Clear();
             return false;
         });
 
@@ -521,7 +546,7 @@ public class PackageInstall(
 
             ct.ThrowIfCancellationRequested();
             var installedPackages = await privilegedOperationService.GetInstalledPackagesAsync();
-            var installedNames = new HashSet<string>(installedPackages?.Select(x => x.Name) ?? []);
+            _installedPackageNames = new HashSet<string>(installedPackages?.Select(x => x.Name) ?? []);
             var queue = new Queue<AlpmPackageDto>(_packages);
 
             GLib.Functions.IdleAdd(0, () =>
@@ -538,7 +563,7 @@ public class PackageInstall(
                 {
                     var dequeued = queue.Dequeue();
                     var pkgObj = new AlpmPackageGObject()
-                        { Package = dequeued, IsInstalled = installedNames.Contains(dequeued.Name) };
+                        { Package = dequeued, IsInstalled = _installedPackageNames.Contains(dequeued.Name) };
                     _packageGObjectRefs.Add(pkgObj);
                     batch.Add(pkgObj);
                     count++;
@@ -820,6 +845,7 @@ public class PackageInstall(
         _checkBinding.Clear();
         _packages.Clear();
         _groups.Clear();
+        _installedPackageNames.Clear();
         _currentDetailPkg = null;
     }
 }
