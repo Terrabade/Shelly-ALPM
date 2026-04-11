@@ -391,7 +391,7 @@ public class PackageUpdate(
         if (string.IsNullOrWhiteSpace(_searchText))
             return true;
 
-        return pkgObj.Package.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+        return pkgObj.Package.Name?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false;
     }
 
     private async Task LoadDataAsync()

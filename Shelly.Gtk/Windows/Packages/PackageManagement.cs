@@ -473,7 +473,7 @@ public class PackageManagement(
     {
         if (obj is AlpmPackageGObject pkgObj && pkgObj.Package != null)
         {
-            if (_selectedGroup != "Any" && !pkgObj.Package.Groups.Contains(_selectedGroup))
+            if (_selectedGroup != "Any" && !(pkgObj.Package.Groups?.Contains(_selectedGroup) ?? false))
             {
                 return false;
             }
@@ -481,8 +481,8 @@ public class PackageManagement(
             if (string.IsNullOrWhiteSpace(_searchText))
                 return true;
 
-            return pkgObj.Package.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                   pkgObj.Package.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+            return (pkgObj.Package.Name?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                   (pkgObj.Package.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false);
         }
 
         return false;
