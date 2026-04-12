@@ -135,7 +135,14 @@ public static class PkgbuildParser
             }
             else
             {
-                resolved.Add(item);
+                // Resolve simple variable substitutions like ${var} or $var within strings
+                var resolvedItem = Regex.Replace(item, @"\$\{(\w+)\}|\$(\w+)", match =>
+                {
+                    var varName = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                    var varValue = ParseVariable(content, varName);
+                    return varValue ?? match.Value;
+                });
+                resolved.Add(resolvedItem);
             }
         }
         return resolved;
