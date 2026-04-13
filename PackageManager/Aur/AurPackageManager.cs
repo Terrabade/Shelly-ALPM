@@ -46,6 +46,7 @@ public enum PackageProgressStatus
     Downloading,
     Building,
     Installing,
+    CleaningUp,
     Completed,
     Failed
 }
@@ -373,6 +374,17 @@ public class AurPackageManager(string? configPath = null)
                 Message = "Building package with makepkg"
             });
             var pkgbuildInfo = PkgbuildParser.Parse(System.IO.Path.Combine(tempPath, "PKGBUILD"));
+
+            // Track makedepends (and checkdepends) that are not runtime deps and not yet installed
+            var runtimeDepNames = pkgbuildInfo.ParsedDepends.Select(d => d.Name).ToHashSet();
+            var buildOnlyDeps = pkgbuildInfo.ParsedMakeDepends
+                .Concat(_noCheck ? [] : pkgbuildInfo.ParsedCheckDepends)
+                .Where(d => !runtimeDepNames.Contains(d.Name))
+                .Where(d => !_alpm.IsDependencySatisfiedByInstalled(d.ToString()))
+                .Select(d => _alpm.FindSatisfierInSyncDbs(d.ToString()) ?? d.Name)
+                .Distinct()
+                .ToList();
+
             var (allRepoPackages, orderedAurPackages) = CollectAllDependencies(pkgbuildInfo);
             Console.Error.WriteLine($"dependency count {allRepoPackages.Count + orderedAurPackages.Count}");
             InstallCollectedDependencies(allRepoPackages, orderedAurPackages, AlpmTransFlag.AllDeps);
@@ -549,6 +561,44 @@ public class AurPackageManager(string? configPath = null)
                 continue;
             }
 
+            // Remove build-only dependencies (makedepends/checkdepends) that were installed for this build
+            if (buildOnlyDeps.Count > 0)
+            {
+                PackageProgress?.Invoke(this, new PackageProgressEventArgs
+                {
+                    PackageName = packageName,
+                    CurrentIndex = i + 1,
+                    TotalCount = totalCount,
+                    Status = PackageProgressStatus.CleaningUp,
+                    Message = $"Removing {buildOnlyDeps.Count} build-only dependencies: {string.Join(", ", buildOnlyDeps)}"
+                });
+                foreach (var dep in buildOnlyDeps)
+                {
+                    BuildOutput?.Invoke(this, new BuildOutputEventArgs
+                    {
+                        PackageName = packageName,
+                        Line = $"[Shelly] Removing build-only dependency: {dep}",
+                        IsError = false
+                    });
+                }
+                try
+                {
+                    _alpm.RemovePackages(buildOnlyDeps, AlpmTransFlag.None);
+                    _alpm.Refresh();
+                }
+                catch (Exception ex)
+                {
+                    PackageProgress?.Invoke(this, new PackageProgressEventArgs
+                    {
+                        PackageName = packageName,
+                        CurrentIndex = i + 1,
+                        TotalCount = totalCount,
+                        Status = PackageProgressStatus.CleaningUp,
+                        Message = $"Warning: Failed to remove some build dependencies: {ex.Message}"
+                    });
+                }
+            }
+
             PackageProgress?.Invoke(this, new PackageProgressEventArgs
             {
                 PackageName = packageName,
@@ -636,6 +686,17 @@ public class AurPackageManager(string? configPath = null)
         });
 
         var pkgbuildInfo = PkgbuildParser.Parse(System.IO.Path.Combine(tempPath, "PKGBUILD"));
+
+        // Track makedepends (and checkdepends) that are not runtime deps and not yet installed
+        var runtimeDepNames = pkgbuildInfo.ParsedDepends.Select(d => d.Name).ToHashSet();
+        var buildOnlyDeps = pkgbuildInfo.ParsedMakeDepends
+            .Concat(_noCheck ? [] : pkgbuildInfo.ParsedCheckDepends)
+            .Where(d => !runtimeDepNames.Contains(d.Name))
+            .Where(d => !_alpm.IsDependencySatisfiedByInstalled(d.ToString()))
+            .Select(d => _alpm.FindSatisfierInSyncDbs(d.ToString()) ?? d.Name)
+            .Distinct()
+            .ToList();
+
         var (allRepoPackages, orderedAurPackages) = CollectAllDependencies(pkgbuildInfo);
         InstallCollectedDependencies(allRepoPackages, orderedAurPackages);
 
@@ -731,6 +792,44 @@ public class AurPackageManager(string? configPath = null)
 
         _ = _alpm.InstallLocalPackage(pkgFiles[0]).Result;
         _alpm.Refresh();
+
+        // Remove build-only dependencies (makedepends/checkdepends) that were installed for this build
+        if (buildOnlyDeps.Count > 0)
+        {
+            PackageProgress?.Invoke(this, new PackageProgressEventArgs
+            {
+                PackageName = packageName,
+                CurrentIndex = 1,
+                TotalCount = 1,
+                Status = PackageProgressStatus.CleaningUp,
+                Message = $"Removing {buildOnlyDeps.Count} build-only dependencies: {string.Join(", ", buildOnlyDeps)}"
+            });
+            foreach (var dep in buildOnlyDeps)
+            {
+                BuildOutput?.Invoke(this, new BuildOutputEventArgs
+                {
+                    PackageName = packageName,
+                    Line = $"[Shelly] Removing build-only dependency: {dep}",
+                    IsError = false
+                });
+            }
+            try
+            {
+                _alpm.RemovePackages(buildOnlyDeps, AlpmTransFlag.None);
+                _alpm.Refresh();
+            }
+            catch (Exception ex)
+            {
+                PackageProgress?.Invoke(this, new PackageProgressEventArgs
+                {
+                    PackageName = packageName,
+                    CurrentIndex = 1,
+                    TotalCount = 1,
+                    Status = PackageProgressStatus.CleaningUp,
+                    Message = $"Warning: Failed to remove some build dependencies: {ex.Message}"
+                });
+            }
+        }
 
         PackageProgress?.Invoke(this, new PackageProgressEventArgs
         {
