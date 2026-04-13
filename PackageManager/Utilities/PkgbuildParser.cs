@@ -10,22 +10,13 @@ namespace PackageManager.Utilities;
 /// </summary>
 public static class PkgbuildParser
 {
-    /// <summary>
-    /// Parses a PKGBUILD file from a file path and returns its metadata.
-    /// </summary>
-    /// <param name="pkgbuildPath">The path to the PKGBUILD file.</param>
-    /// <returns>A PkgbuildInfo object containing the parsed data.</returns>
+
     public static PkgbuildInfo Parse(string pkgbuildPath)
     {
         var pkgbuildContent = File.ReadAllText(pkgbuildPath);
         return ParseContent(pkgbuildContent);
     }
-
-    /// <summary>
-    /// Parses PKGBUILD content and returns its metadata.
-    /// </summary>
-    /// <param name="pkgbuildContent">The content of the PKGBUILD file.</param>
-    /// <returns>A PkgbuildInfo object containing the parsed data.</returns>
+    
     public static PkgbuildInfo ParseContent(string pkgbuildContent)
     {
         var vars = BuildVariableDictionary(pkgbuildContent);
@@ -54,10 +45,7 @@ public static class PkgbuildParser
         };
     }
 
-    /// <summary>
-    /// Builds a dictionary of all top-level variable assignments in the PKGBUILD,
-    /// then resolves chained references in multiple passes.
-    /// </summary>
+
     private static Dictionary<string, string> BuildVariableDictionary(string content)
     {
         var vars = new Dictionary<string, string>();
@@ -97,18 +85,16 @@ public static class PkgbuildParser
         return vars;
     }
 
-    /// <summary>
-    /// Resolves all variable references and arithmetic in a single string.
-    /// </summary>
+
     private static string ResolveString(string input, Dictionary<string, string> vars)
     {
-        // 1. Resolve arithmetic: $((expr))
+
         var result = Regex.Replace(input, @"\$\(\(([^)]+)\)\)", match =>
         {
             return EvaluateArithmetic(match.Groups[1].Value, vars);
         });
 
-        // 2. Resolve command substitution: $(command) — can't execute, strip
+
         result = Regex.Replace(result, @"\$\([^)]+\)", match =>
         {
             System.Console.Error.WriteLine(
@@ -116,7 +102,7 @@ public static class PkgbuildParser
             return "";
         });
 
-        // 3. Resolve ${var} and $var references
+
         result = Regex.Replace(result, @"\$\{(\w+)\}|\$(\w+)", match =>
         {
             var varName = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
@@ -126,12 +112,10 @@ public static class PkgbuildParser
         return result;
     }
 
-    /// <summary>
-    /// Evaluates simple bash arithmetic expressions: +, -, *, /, %
-    /// </summary>
+
     private static string EvaluateArithmetic(string expr, Dictionary<string, string> vars)
     {
-        // First resolve any variable references within the expression
+
         var resolved = Regex.Replace(expr, @"\$\{?(\w+)\}?", match =>
         {
             var name = match.Groups[1].Value;
@@ -220,9 +204,7 @@ public static class PkgbuildParser
         return 0;
     }
 
-    /// <summary>
-    /// Parses a single variable from PKGBUILD content.
-    /// </summary>
+
     private static string? ParseVariable(string content, string variableName)
     {
         var pattern = $@"^{variableName}=(?:""([^""]*)""|'([^']*)'|(\S+))";
@@ -243,9 +225,7 @@ public static class PkgbuildParser
         return vars.TryGetValue(varName, out var val) ? val : ParseVariable(content, varName);
     }
 
-    /// <summary>
-    /// Parses an array variable from PKGBUILD content, skipping assignments inside conditional blocks.
-    /// </summary>
+
     private static List<string> ParseArray(string content, string variableName)
     {
         var result = new List<string>();
@@ -266,11 +246,11 @@ public static class PkgbuildParser
 
             var arrayContent = match.Groups[1].Value;
 
-            // Strip comments (from # to end of line), respecting quoted strings
+
             var lines = arrayContent.Split('\n');
             var cleanedContent = string.Join("\n", lines.Select(StripComment));
 
-            // Extract quoted strings and unquoted words
+
             var itemPattern = @"""([^""]*)""" + @"|'([^']*)'|(\S+)";
             var itemMatches = Regex.Matches(cleanedContent, itemPattern);
 
@@ -287,9 +267,7 @@ public static class PkgbuildParser
         return result;
     }
 
-    /// <summary>
-    /// Determines if a position in the content is inside an if/then block.
-    /// </summary>
+
     private static bool IsInsideConditionalBlock(string content, int position)
     {
         var before = content.Substring(0, position);
@@ -338,7 +316,6 @@ public static class PkgbuildParser
             }
         }
 
-        // Strip dangling version operators or unresolved variable references in version constraints
         resolved = resolved.Select(dep =>
         {
             // Strip version constraint with unresolved $var reference: "pkg>=$_ver" -> "pkg"
@@ -357,9 +334,7 @@ public static class PkgbuildParser
     }
 }
 
-/// <summary>
-/// Represents parsed PKGBUILD metadata.
-/// </summary>
+
 public class PkgbuildInfo
 {
     public string? PkgName { get; set; }
@@ -403,9 +378,7 @@ public class PkgbuildInfo
         return storage;
     }
 
-    /// <summary>
-    /// Gets all build-time dependencies (depends + makedepends + optionally checkdepends).
-    /// </summary>
+
     public List<string> GetAllBuildDependencies(bool includeCheckDepends = false)
     {
         var deps = Depends.Concat(MakeDepends);
@@ -414,9 +387,7 @@ public class PkgbuildInfo
         return deps.Distinct().ToList();
     }
 
-    /// <summary>
-    /// Gets the full version string (epoch:pkgver-pkgrel).
-    /// </summary>
+
     public string GetFullVersion()
     {
         var version = PkgVer ?? "0";
