@@ -164,6 +164,11 @@ public class Program
                 .WithExample("install-local", "--location", "/path/to/package.pkg.tar.zst")
                 .WithExample("install-local", "-l", "/path/to/package.pkg.tar.zst");
 
+            config.AddCommand<AppImageRemoveCommand>("remove-appimage")
+                .WithDescription("Remove an appimage file")
+                .WithExample("remove-appimage", "--name", "firefox")
+                .WithExample("remove-appimage", "-n", "firefox");
+
             config.AddCommand<RemoveCommand>("remove")
                 .WithDescription("Remove one or more packages")
                 .WithExample("remove", "firefox")

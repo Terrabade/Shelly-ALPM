@@ -116,7 +116,7 @@ public class AppImageInstallCommand : AsyncCommand<AppImageInstallSettings>
             Directory.CreateDirectory(iconDir);
             
             var extension = Path.GetExtension(iconPath);
-            if (string.IsNullOrEmpty(extension) || extension == ".DirIcon") extension = ".svg"; // AppImages often use svg for .DirIcon
+            if (string.IsNullOrEmpty(extension) || extension == ".DirIcon") extension = ".svg";
 
             var destIconName = $"{CleanInvalidNames(appName).ToLower()}{extension}";
             var destIconPath = Path.Combine(iconDir, destIconName);
