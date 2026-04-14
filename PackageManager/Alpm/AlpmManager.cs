@@ -218,7 +218,7 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
                 continue;
             }
 
-            
+
             foreach (var server in repo.Servers)
             {
                 var archSuffixMatch = Regex.Match(server, @"\$arch([^/]+)");
@@ -228,13 +228,13 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
                     var archLevel = int.Parse(archSuffixMatch.Groups[1].Value.Split('v')[1]);
                     for (var i = archLevel; i >= 2; i--)
                     {
-                        if(registeredArchitectures.Contains(resolvedArch + $"_v{i}")) continue;
+                        if (registeredArchitectures.Contains(resolvedArch + $"_v{i}")) continue;
                         AddArchitecture(_handle, resolvedArch + $"_v{i}");
                         Console.Error.WriteLine($"[DEBUG_LOG] Registering Architecture: {resolvedArch + $"_v{i}"}");
                         registeredArchitectures.Add(resolvedArch + $"_v{i}");
                     }
                     //AddArchitecture(_handle, resolvedArch + suffix);
-                    
+
                     //Commented out logs because it's too much noise. Uncomment if needed
                     //Console.Error.WriteLine($"[DEBUG_LOG] Found architecture suffix: {suffix}");
                     //Console.Error.WriteLine($"[DEBUG_LOG] Registering Architecture: {resolvedArch + suffix}");
@@ -1006,23 +1006,37 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
                     {
                         break;
                     }
-
-                    var pkgCache = DbGetPkgCache(node.Data);
-                    pkgPtr = PkgFindSatisfier(pkgCache, packageName);
-                    if (pkgPtr != IntPtr.Zero)
-                    {
-                        break;
-                    }
                 }
 
                 currentPtr = node.Next;
             }
 
+            // Failed to find direct pkg name or group pkg so looking for a satisfier.
             if (pkgPtr == IntPtr.Zero && groupPkgs == null)
             {
-                ErrorEvent?.Invoke(this,
-                    new AlpmErrorEventArgs($"Package '{packageName}' not found in any sync database."));
-                return Task.FromResult(false);
+                currentPtr = syncDbsPtr;
+                while (currentPtr != IntPtr.Zero)
+                {
+                    var node = Marshal.PtrToStructure<AlpmList>(currentPtr);
+                    if (node.Data != IntPtr.Zero)
+                    {
+                        var pkgCache = DbGetPkgCache(node.Data);
+                        pkgPtr = PkgFindSatisfier(pkgCache, packageName);
+                        if (pkgPtr != IntPtr.Zero)
+                        {
+                            break;
+                        }
+                    }
+
+                    currentPtr = node.Next;
+                }
+
+                if (pkgPtr == IntPtr.Zero)
+                {
+                    ErrorEvent?.Invoke(this,
+                        new AlpmErrorEventArgs($"Package '{packageName}' not found in any sync database."));
+                    return Task.FromResult(false);
+                }
             }
 
             if (pkgPtr != IntPtr.Zero)
@@ -1069,10 +1083,11 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
             var result = PackageListBuilder.Build(_handle, selectedOptDeps);
             pkgPtrs.AddRange(result);
         }
+
         Console.Error.WriteLine($"[DEBUG] TransInit: handle={_handle}, dbPath={_config.DbPath}");
         Console.Error.WriteLine($"[DEBUG] db.lck exists: {File.Exists(Path.Combine(_config.DbPath, "db.lck"))}");
-        
-        var lockfilePath = AlpmReference.GetLockFile(_handle);  // Need to bind alpm_option_get_lockfile
+
+        var lockfilePath = AlpmReference.GetLockFile(_handle); // Need to bind alpm_option_get_lockfile
         Console.Error.WriteLine($"[DEBUG] libalpm lockfile: {Marshal.PtrToStringAnsi(lockfilePath)}");
         Console.Error.WriteLine($"[DEBUG] C# check path: {Path.Combine(_config.DbPath, "db.lck")}");
         Console.Error.WriteLine($"[DEBUG] dbpath dir exists: {Directory.Exists(_config.DbPath)}");
@@ -1081,12 +1096,13 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         {
             // var posixErrno = Marshal.ReadInt32(ErrnoLocation());
             // Console.Error.WriteLine($"[DEBUG] POSIX errno: {posixErrno}");
-             var err = ErrorNumber(_handle);
+            var err = ErrorNumber(_handle);
             // Console.Error.WriteLine($"[DEBUG] TransInit failed: errno={err} ({(int)err}), message={GetErrorMessage(err)}");
             ErrorEvent?.Invoke(this,
-                new AlpmErrorEventArgs($"Failed to initialize transaction: with Error Number: {err} and message: {GetErrorMessage(err)}"));
-            
-           
+                new AlpmErrorEventArgs(
+                    $"Failed to initialize transaction: with Error Number: {err} and message: {GetErrorMessage(err)}"));
+
+
             return Task.FromResult(false);
         }
 
@@ -1549,7 +1565,6 @@ public class AlpmManager(string configPath = "/etc/pacman.conf") : IDisposable, 
         if (dependencyToInstall.Count == 0) return Task.FromResult(true);
 
         return InstallPackages(dependencyToInstall, flags);
-
     }
 
     public void Refresh()
