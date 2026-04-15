@@ -1461,7 +1461,7 @@ public class FlatpakManager : IDisposable
     /// Retrieve flatpak that require updates
     /// <returns>List of FlatpakPackageDto</returns>
     /// </summary>
-    public static List<FlatpakPackageDto> GetPackagesWithUpdates()
+    public static List<FlatpakPackageDto> GetPackagesWithUpdates(bool includePermissionChanges = false)
     {
         if (!NativeResolver.IsLibraryAvailable(FlatpakReference.LibName))
         {
@@ -1498,6 +1498,12 @@ public class FlatpakManager : IDisposable
                 var refsPtr = FlatpakReference.InstanceGetUpdates(installationPtr, IntPtr.Zero, out IntPtr refsError);
                 if (refsError != IntPtr.Zero || refsPtr == IntPtr.Zero) continue;
 
+                var transactionPtr = IntPtr.Zero;
+                if (includePermissionChanges)
+                {
+                    transactionPtr = FlatpakReference.TransactionNewForInstallation(installationPtr, IntPtr.Zero, out _);
+                }
+
                 try
                 {
                     var refsDataPtr = Marshal.ReadIntPtr(refsPtr);
@@ -1507,11 +1513,71 @@ public class FlatpakManager : IDisposable
                         var refPtr = Marshal.ReadIntPtr(refsDataPtr + j * IntPtr.Size);
                         if (refPtr == IntPtr.Zero) continue;
                         var package = new FlatpackPackage(refPtr);
-                        packages.Add(package.ToDto());
+                        var dto = package.ToDto();
+
+                        if (transactionPtr != IntPtr.Zero)
+                        {
+                            var refString = BuildRefString(dto);
+                            FlatpakReference.TransactionAddUpdate(transactionPtr, refString, IntPtr.Zero, null, out _);
+                        }
+
+                        packages.Add(dto);
+                    }
+
+                    if (transactionPtr != IntPtr.Zero)
+                    {
+                        var readyCalled = false;
+                        var readyCallback = new FlatpakReference.TransactionReadyCallback((transaction, data) =>
+                        {
+                            readyCalled = true;
+                            var opsList = FlatpakReference.TransactionGetOperations(transaction);
+                            var currentOpNode = opsList;
+                            while (currentOpNode != IntPtr.Zero)
+                            {
+                                var node = Marshal.PtrToStructure<FlatpakList>(currentOpNode);
+                                var operation = node.Data;
+                                if (operation != IntPtr.Zero)
+                                {
+                                    var refPtr = FlatpakReference.TransactionOperationGetRef(operation);
+                                    var refStr = PtrToStringSafe(refPtr);
+                                    
+                                    var pkgDto = packages.FirstOrDefault(p => BuildRefString(p) == refStr);
+                                    if (pkgDto != null)
+                                    {
+                                        var metadata = FlatpakReference.TransactionOperationGetMetadata(operation);
+                                        var oldMetadata = FlatpakReference.TransactionOperationGetOldMetadata(operation);
+                                        
+                                        var newPerms = GetPermissionsFromKeyFile(metadata);
+                                        var oldPerms = GetPermissionsFromKeyFile(oldMetadata);
+                                        
+                                        var added = newPerms.Except(oldPerms).ToList();
+                                        var removed = oldPerms.Except(newPerms).ToList();
+                                        
+                                        foreach (var p in added) pkgDto.Permissions.Add($"+ {p}");
+                                        foreach (var p in removed) pkgDto.Permissions.Add($"- {p}");
+                                    }
+                                }
+                                currentOpNode = node.Next;
+                            }
+                            return false; // Stop the transaction
+                        });
+
+                        var readyCallbackPtr = Marshal.GetFunctionPointerForDelegate(readyCallback);
+                        FlatpakReference.GSignalConnectData(transactionPtr, "ready", readyCallbackPtr, IntPtr.Zero, IntPtr.Zero, 0);
+
+                        // Run the transaction - it will stop at 'ready' because we return false
+                        FlatpakReference.TransactionRun(transactionPtr, IntPtr.Zero, out _);
+                        
+                        if (!readyCalled)
+                        {
+                        }
+                        
+                        GC.KeepAlive(readyCallback);
                     }
                 }
                 finally
                 {
+                    if (transactionPtr != IntPtr.Zero) FlatpakReference.GObjectUnref(transactionPtr);
                     FlatpakReference.GPtrArrayUnref(refsPtr);
                 }
             }
@@ -1981,6 +2047,69 @@ public class FlatpakManager : IDisposable
         return $"{kindString}/{package.Id}/{package.Arch}/{package.Branch}";
     }
 
+    private static List<string> GetPermissionsFromKeyFile(IntPtr keyFile)
+    {
+        var permissions = new List<string>();
+        if (keyFile == IntPtr.Zero) return permissions;
+
+        // Common groups for permissions in Flatpak metadata
+        string[] groups = ["Context", "ExtensionBus", "Shared", "Sockets", "Filesystems", "SessionBus", "SystemBus"];
+        
+        foreach (var group in groups)
+        {
+            // Each group can have multiple keys. We want to collect all of them.
+            // For Context, keys are things like 'shared', 'sockets', 'filesystems', 'devices', 'features'.
+            // For other groups, the keys themselves are the permissions (e.g. SessionBus=org.freedesktop.Notifications).
+
+            var keysPtr = FlatpakReference.GKeyFileGetKeys(keyFile, group, out var length, out _);
+            if (keysPtr != IntPtr.Zero)
+            {
+                for (nuint i = 0; i < length; i++)
+                {
+                    var keyPtr = Marshal.ReadIntPtr(keysPtr, (int)i * IntPtr.Size);
+                    var key = Marshal.PtrToStringUTF8(keyPtr);
+                    if (string.IsNullOrEmpty(key)) continue;
+
+                    // Now get the value(s) for this key
+                    var listPtr = FlatpakReference.GKeyFileGetStringList(keyFile, group, key, out var listLength, out _);
+                    if (listPtr != IntPtr.Zero)
+                    {
+                        for (nuint j = 0; j < listLength; j++)
+                        {
+                            var valPtr = Marshal.ReadIntPtr(listPtr, (int)j * IntPtr.Size);
+                            var val = Marshal.PtrToStringUTF8(valPtr);
+                            if (!string.IsNullOrEmpty(val))
+                            {
+                                permissions.Add($"{group}={key}:{val}");
+                            }
+                        }
+                        FlatpakReference.GStrFreeV(listPtr);
+                    }
+                    else
+                    {
+                        // Try as single string if list fails (though permissions are usually lists)
+                        var valPtr = FlatpakReference.GKeyFileGetString(keyFile, group, key, out _);
+                        if (valPtr != IntPtr.Zero)
+                        {
+                            var val = Marshal.PtrToStringUTF8(valPtr);
+                            if (!string.IsNullOrEmpty(val))
+                            {
+                                permissions.Add($"{group}={key}:{val}");
+                            }
+                            FlatpakReference.GFree(valPtr);
+                        }
+                    }
+                }
+                FlatpakReference.GStrFreeV(keysPtr);
+            }
+        }
+        return permissions;
+    }
+
+    private static void OnTransactionReady(IntPtr transaction, IntPtr userData)
+    {
+    }
+
     /// <summary>
     /// Callback for when a new operation is started in a transaction.
     /// </summary>
@@ -2016,6 +2145,11 @@ public class FlatpakManager : IDisposable
             var progressCallbackPtr = Marshal.GetFunctionPointerForDelegate(progressCallback);
             FlatpakReference.GSignalConnectData(progress, "changed", progressCallbackPtr,
                 IntPtr.Zero, IntPtr.Zero, 0);
+
+            // Extract metadata if it's an update or install
+            var opType = FlatpakReference.TransactionOperationGetOperationType(operation);
+            var refPtr = FlatpakReference.TransactionOperationGetRef(operation);
+            var refStr = PtrToStringSafe(refPtr);
         }
         catch (Exception ex)
         {
