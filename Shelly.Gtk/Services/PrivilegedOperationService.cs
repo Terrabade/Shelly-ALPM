@@ -253,7 +253,7 @@ public class PrivilegedOperationService : IPrivilegedOperationService
     {
         // Use privileged execution to sync databases and get updates
         var result = await ExecutePrivilegedCommandAsync("Check for Updates", "list-updates", "--json");
-
+        SendDbusMessage(result);
         if (!result.Success || string.IsNullOrWhiteSpace(result.Output))
         {
             return [];
@@ -404,7 +404,7 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         var result = showHidden
             ? await ExecuteCommandAsync("aur list-updates", "--json", "--show-hidden")
             : await ExecuteCommandAsync("aur list-updates", "--json");
-
+        SendDbusMessage(result);       
         if (!result.Success || string.IsNullOrWhiteSpace(result.Output))
         {
             return [];

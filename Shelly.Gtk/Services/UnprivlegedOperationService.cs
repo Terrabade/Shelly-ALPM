@@ -86,7 +86,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
     public async Task<List<FlatpakPackageDto>> ListFlatpakUpdates()
     {
         var result = await ExecuteUnprivilegedCommandAsync("List packages", "flatpak list-updates", "--json");
-
+        SendDbusMessage(result);
         if (!result.Success || string.IsNullOrWhiteSpace(result.Output))
         {
             return [];
@@ -330,6 +330,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
     {
         var args = showHidden ? "list-updates --json --show-hidden" : "list-updates --json";
         var result = await ExecuteUnprivilegedCommandAsync("Get Available Updates", args);
+        SendDbusMessage(result);
         try
         {
             var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -369,6 +370,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
     public async Task<SyncModel> CheckForApplicationUpdates()
     {
         var result = await ExecuteUnprivilegedCommandAsync("Get Available Updates", "utility updates -a -l --json");
+        //SendDbusMessage(result);
         try
         {
             var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
