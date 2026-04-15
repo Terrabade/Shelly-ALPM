@@ -28,6 +28,7 @@ public class HomeWindow(
     private readonly CancellationTokenSource _cts = new();
     private ListBox? _updatesListBox;
     private List<RssModel> _archNewsItems = [];
+    private List<RssModel> _newArchNewsItems = [];
     private Label? _totalAurLabel;
     private Label? _percentAurLabel;
     private Label? _totalPackageLabel;
@@ -125,12 +126,12 @@ public class HomeWindow(
             });
         };
 
+        _ = FindNewNews(_cts.Token);
 
         _operationLogListBox = (ListBox)builder.GetObject("OperationLogListBox")!;
         _operationLogListBox.OnRealize += (sender, args) => { _ = LoadOperationLog(_cts.Token); };
 
         _archNewsButton.OnClicked += (_, _) => OpenArchNewsOverlay();
-        _archNewsButton.OnRealize += (sender, args) => { _ = LoadArchNews(_cts.Token); };
 
         _ = LoadUpdatesPanel(_updatesListBox!, _cts.Token);
         _updateTimerId = GLib.Functions.TimeoutAdd(200, 180000, () =>
@@ -185,6 +186,84 @@ public class HomeWindow(
         else
         {
             foreach (var item in _archNewsItems)
+            {
+                var row = new ListBoxRow();
+                var vbox = Box.New(Orientation.Vertical, 5);
+                vbox.MarginStart = 10;
+                vbox.MarginEnd = 10;
+                vbox.MarginTop = 10;
+                vbox.MarginBottom = 10;
+
+                var newsTitle = Label.New(item.Title);
+                newsTitle.AddCssClass("title-4");
+                newsTitle.Xalign = 0;
+                newsTitle.Wrap = true;
+                vbox.Append(newsTitle);
+
+                if (!string.IsNullOrEmpty(item.PubDate))
+                {
+                    var dateLabel = Label.New(item.PubDate);
+                    dateLabel.AddCssClass("caption");
+                    dateLabel.AddCssClass("dim-label");
+                    dateLabel.Xalign = 0;
+                    vbox.Append(dateLabel);
+                }
+
+                if (!string.IsNullOrEmpty(item.Description))
+                {
+                    var descLabel = Label.New(item.Description);
+                    descLabel.Xalign = 0;
+                    descLabel.Wrap = true;
+                    descLabel.Lines = 3;
+                    descLabel.Ellipsize = Pango.EllipsizeMode.End;
+                    vbox.Append(descLabel);
+                }
+
+                row.SetChild(vbox);
+                listBox.Append(row);
+            }
+        }
+    }
+
+    private async void ShowNewNews()
+    {
+        var container = new Box();
+        container.SetOrientation(Orientation.Vertical);
+        container.SetSpacing(10);
+        container.SetMarginBottom(10);
+        container.SetMarginEnd(10);
+        container.SetMarginStart(10);
+        container.SetMarginTop(10);
+
+        var titleLabel = Label.New("New Arch Linux News");
+        titleLabel.AddCssClass("title-1");
+        titleLabel.Xalign = 0;
+        container.Append(titleLabel);
+
+        var listBox = new ListBox();
+        listBox.SetSelectionMode(SelectionMode.None);
+        listBox.AddCssClass("rich-list");
+
+        var scrolledWindow = new ScrolledWindow();
+        scrolledWindow.SetVexpand(true);
+        scrolledWindow.HscrollbarPolicy = PolicyType.Never;
+        scrolledWindow.SetChild(listBox);
+        container.Append(scrolledWindow);
+
+        var args = new GenericDialogEventArgs(container);
+        GenericOverlay.ShowGenericOverlay(_overlay, container, args, 700, 500);
+
+        if (_newArchNewsItems.Count == 0)
+        {
+            var placeholder = Label.New("No news available");
+            placeholder.AddCssClass("dim-label");
+            placeholder.Halign = Align.Center;
+            placeholder.MarginTop = 20;
+            listBox.Append(placeholder);
+        }
+        else
+        {
+            foreach (var item in _newArchNewsItems)
             {
                 var row = new ListBoxRow();
                 var vbox = Box.New(Orientation.Vertical, 5);
@@ -736,6 +815,26 @@ public class HomeWindow(
         }
     }
 
+    private async Task FindNewNews(CancellationToken ct)
+    {
+        try
+        {
+            var items = await archNewsService.FindNewNewsAsync(ct);
+            ct.ThrowIfCancellationRequested();
+
+            if (items.Count is > 0 and < 10)
+            {
+                _newArchNewsItems = items;
+                ShowNewNews();
+                _ = LoadArchNews(_cts.Token); //load news to refresh status so we dont reprompt
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to load Arch News: {e.Message}");
+        }
+    }
+
     private async Task LoadArchNews(CancellationToken ct)
     {
         try
@@ -862,6 +961,7 @@ public class HomeWindow(
             GLib.Functions.SourceRemove(_updateTimerId);
             _updateTimerId = 0;
         }
+
         _cts.Cancel();
         _cts.Dispose();
     }

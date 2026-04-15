@@ -48,6 +48,8 @@ public interface IUnprivilegedOperationService
     Task<List<AppImageDto>> GetInstallAppImagesAsync();
     
     Task<List<AppImageDto>> GetUpdatesAppImagesAsync();
+    
+    Task<List<RssModel>> GetArchNewsAsync(bool all = false);
 }
 
 public class UnprivilegedOperationResult

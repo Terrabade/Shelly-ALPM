@@ -170,10 +170,11 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
 
     public async Task<UnprivilegedOperationResult> RemoveFlatpakPackage(string package, bool removeConfig)
     {
-        if(removeConfig)
+        if (removeConfig)
         {
             return await ExecuteUnprivilegedCommandAsync("Remove package", "flatpak uninstall", package, "-c");
         }
+
         return await ExecuteUnprivilegedCommandAsync("Remove package", "flatpak uninstall", package);
     }
 
@@ -282,10 +283,12 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
                 var trimmedLine = StripBom(line.Trim());
                 if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]"))
                 {
-                    var apps = System.Text.Json.JsonSerializer.Deserialize(trimmedLine, ShellyGtkJsonContext.Default.ListAppImageDto);
+                    var apps = System.Text.Json.JsonSerializer.Deserialize(trimmedLine,
+                        ShellyGtkJsonContext.Default.ListAppImageDto);
                     return apps ?? [];
                 }
             }
+
             return [];
         }
         catch (Exception ex)
@@ -294,6 +297,38 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
             return [];
         }
     }
+
+    public async Task<List<RssModel>> GetArchNewsAsync(bool all = false)
+    {
+        var args = all ? "news" + " --json" + " --all" : "news" + " --json";
+        var result = await ExecuteUnprivilegedCommandAsync("Fetch Arch News", args, "--ui-mode");
+        if (!result.Success || string.IsNullOrEmpty(result.Output))
+        {
+            return [];
+        }
+
+        try
+        {
+            var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var trimmedLine = StripBom(line.Trim());
+                if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]"))
+                {
+                    var apps = System.Text.Json.JsonSerializer.Deserialize(trimmedLine,
+                        ShellyGtkJsonContext.Default.ListRssModel);
+                    return apps ?? [];
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deserializing Arch News: {ex.Message}");
+        }
+
+        return [];
+    }
+
 
     public async Task<List<AppImageDto>> GetUpdatesAppImagesAsync()
     {
@@ -306,7 +341,8 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
                 var trimmedLine = StripBom(line.Trim());
                 if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]"))
                 {
-                    var updates = System.Text.Json.JsonSerializer.Deserialize(trimmedLine, ShellyGtkJsonContext.Default.ListAppImageUpdateDto);
+                    var updates = System.Text.Json.JsonSerializer.Deserialize(trimmedLine,
+                        ShellyGtkJsonContext.Default.ListAppImageUpdateDto);
                     return updates?.Select(u => new AppImageDto
                     {
                         Name = u.Name,
@@ -317,6 +353,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
                     }).ToList() ?? [];
                 }
             }
+
             return [];
         }
         catch (Exception ex)
@@ -490,7 +527,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
                 {
                     var questionText = e.Data.Substring("[Shelly][ALPM_QUESTION]".Length);
                     Console.Error.WriteLine($"[Shelly]Question received: {questionText}");
-                    
+
                     // Send response to CLI via stdin
                     if (stdinWriter != null)
                     {
@@ -558,7 +595,7 @@ public class UnprivilegedOperationService(ITrayDbus trayDbus) : IUnprivilegedOpe
         // UTF-8 BOM is 0xEF 0xBB 0xBF which appears as \uFEFF in .NET strings
         return input.TrimStart('\uFEFF');
     }
-    
+
     private void SendDbusMessage(UnprivilegedOperationResult result)
     {
         if (result.Success)
