@@ -7,6 +7,7 @@ using Shelly.Gtk.Services.Icons;
 using Shelly.Gtk.UiModels;
 using Shelly.Gtk.UiModels.PackageManagerObjects;
 using Shelly.Gtk.UiModels.PackageManagerObjects.GObjects;
+using Shelly.Gtk.Windows.Dialog;
 
 // ReSharper disable CollectionNeverQueried.Local
 
@@ -53,6 +54,7 @@ public class PackageUpdate(
     private Revealer _detailRevealer = null!;
     private Box _detailBox = null!;
     private AlpmUpdateGObject? _currentDetailPkg;
+    private HashSet<string> _installedPackageNames = [];
 
 
     public Widget CreateWindow()
@@ -208,6 +210,14 @@ public class PackageUpdate(
         nameLabel.Halign = Align.Center;
         headerBox.Append(nameLabel);
 
+        var descLabel = Label.New(pkg.Description);
+        descLabel.AddCssClass("dim-label");
+        descLabel.Halign = Align.Center;
+        descLabel.Wrap = true;
+        descLabel.Justify = Justification.Center;
+        descLabel.MaxWidthChars = 40;
+        headerBox.Append(descLabel);
+
         _detailBox.Append(headerBox);
 
         var separator = Separator.New(Orientation.Horizontal);
@@ -218,7 +228,138 @@ public class PackageUpdate(
         AddDetail("New", pkg.NewVersion);
         AddDetail("Download", SizeHelpers.FormatSize(pkg.DownloadSize));
         AddDetail("Size Diff", SizeHelpers.FormatSize(pkg.SizeDifference));
+        AddDetail("Repository", pkg.Repository);
+        AddDetail("Size", SizeHelpers.FormatSize(pkg.InstalledSize));
+        if (!string.IsNullOrEmpty(pkg.Url))
+        {
+            var row = Box.New(Orientation.Horizontal, 12);
+            row.MarginBottom = 4;
+            var labelWidget = Label.New("URL:");
+            labelWidget.AddCssClass("dim-label");
+            labelWidget.Halign = Align.Start;
+            labelWidget.Valign = Align.Start;
+            labelWidget.WidthRequest = 80;
+            labelWidget.Xalign = 0;
+
+            var valueWidget = Label.New(null);
+            var escaped = GLib.Functions.MarkupEscapeText(pkg.Url, -1);
+            valueWidget.SetMarkup($"<a href=\"{escaped}\">{escaped}</a>");
+            valueWidget.Halign = Align.Start;
+            valueWidget.Wrap = true;
+            valueWidget.WrapMode = Pango.WrapMode.WordChar;
+            valueWidget.MaxWidthChars = 30;
+            valueWidget.Xalign = 0;
+
+            row.Append(labelWidget);
+            row.Append(valueWidget);
+            _detailBox.Append(row);
+        }
+
+        if (pkg.Depends.Count > 0)
+        {
+            AddChipList("Depends", pkg.Depends);
+        }
+
+        if (pkg.OptDepends.Count > 0)
+        {
+            AddChipList("Optional Deps", pkg.OptDepends, true);
+        }
+
+        if (pkg.Licenses.Count > 0)
+            AddDetail("Licenses", string.Join(", ", pkg.Licenses));
+        if (pkg.Provides.Count > 0)
+            AddDetail("Provides", string.Join(", ", pkg.Provides));
+        if (pkg.Conflicts.Count > 0)
+            AddDetail("Conflicts", string.Join(", ", pkg.Conflicts));
+        if (pkg.Groups.Count > 0)
+            AddDetail("Groups", string.Join(", ", pkg.Groups));
+
+        if (configService.LoadConfig().WebViewEnabled)
+        {
+            if (pkg.Depends.Count > 0)
+            {
+                var dictionary = new Dictionary<string, List<string>> { { pkg.Name, pkg.Depends } };
+
+                foreach (var dep in pkg.Depends)
+                {
+                    for (uint i = 0; i < _listStore.GetNItems(); i++)
+                    {
+                        var obj = _listStore.GetObject(i);
+                        if (obj is not AlpmUpdateGObject depObj || depObj.Package == null) continue;
+                        if (depObj.Package.Name.Contains(dep))
+                            dictionary.TryAdd(depObj.Package.Name, depObj.Package.Depends);
+                    }
+                }
+
+                var window = new WebWindow(pkg.Name, dictionary);
+                _detailBox.Append(window.CreateWindow());
+            }
+        }
+
         _detailRevealer.SetRevealChild(true);
+        return;
+
+        void AddChipList(string label, IReadOnlyList<string> items, bool isOptional = false)
+        {
+            var expander = new Expander { Label = $"{label} ({items.Count})" };
+            expander.AddCssClass("package-detail-expander");
+            expander.Hexpand = false;
+
+            var flowBox = new FlowBox
+            {
+                SelectionMode = SelectionMode.None,
+                ColumnSpacing = 6,
+                RowSpacing = 6,
+                Halign = Align.Start,
+                Valign = Align.Start,
+                MaxChildrenPerLine = isOptional ? 1u : 10u,
+                MinChildrenPerLine = 1
+            };
+
+            foreach (var item in items)
+            {
+                if (isOptional)
+                {
+                    var optDepName = item.Split(':').First().Trim();
+                    var isInstalled = _installedPackageNames.Contains(optDepName);
+
+                    var escapedItem = GLib.Functions.MarkupEscapeText(item, -1);
+
+                    var chipBox = Box.New(Orientation.Horizontal, 4);
+                    chipBox.AddCssClass("package-chip");
+                    chipBox.Valign = Align.Center;
+
+                    var checkIcon = Image.NewFromIconName("object-select-symbolic");
+                    checkIcon.PixelSize = 16;
+                    checkIcon.Visible = isInstalled;
+
+                    var chipLabel = Label.New(string.Empty);
+                    chipLabel.SetMarkup($"<span size='small'>{escapedItem}</span>");
+                    chipLabel.Selectable = true;
+                    chipLabel.Ellipsize = Pango.EllipsizeMode.End;
+                    chipLabel.MaxWidthChars = 25;
+                    chipLabel.Wrap = true;
+                    chipLabel.WrapMode = Pango.WrapMode.WordChar;
+                    chipLabel.Xalign = 0;
+
+                    chipBox.Append(checkIcon);
+                    chipBox.Append(chipLabel);
+                    flowBox.Append(chipBox);
+                }
+                else
+                {
+                    var chip = Label.New(item);
+                    chip.AddCssClass("package-chip");
+                    chip.Selectable = true;
+                    chip.Ellipsize = Pango.EllipsizeMode.End;
+                    chip.MaxWidthChars = 25;
+                    flowBox.Append(chip);
+                }
+            }
+
+            expander.SetChild(flowBox);
+            _detailBox.Append(expander);
+        }
     }
 
     private void SetupColumns(ColumnViewColumn checkColumn, ColumnViewColumn nameColumn,
@@ -399,6 +540,8 @@ public class PackageUpdate(
         try
         {
             var packages = await unprivilegedOperationService.CheckForStandardApplicationUpdates(_showHiddenCheck.Active);
+            var installedPackages = await privilegedOperationService.GetInstalledPackagesAsync();
+            _installedPackageNames = new HashSet<string>(installedPackages?.Select(x => x.Name) ?? []);
             GLib.Functions.IdleAdd(0, () =>
             {
                 _listStore.RemoveAll();
