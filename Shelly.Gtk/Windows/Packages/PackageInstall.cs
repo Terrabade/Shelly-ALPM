@@ -34,10 +34,6 @@ public class PackageInstall(
     private StringList _groupsStringList = null!;
     private string _selectedGroup = "Any";
 
-    private Dictionary<ColumnViewCell, (SignalHandler<CheckButton> OnToggled, EventHandler OnExternalToggle)>
-        _checkBinding =
-            [];
-
     private SignalListItemFactory _checkFactory = null!;
     private SignalListItemFactory _nameFactory = null!;
     private SignalListItemFactory _sizeFactory = null!;
@@ -208,8 +204,7 @@ public class PackageInstall(
         var iconPath = iconResolverService.GetIconPath(pkg.Name);
         if (!string.IsNullOrEmpty(iconPath) && iconPath != "Unavailable" && File.Exists(iconPath))
         {
-            var texture = Gdk.Texture.NewFromFilename(iconPath);
-            iconImage.SetFromPaintable(texture);
+            iconImage.SetFromFile(iconPath);
         }
         else
         {
@@ -381,8 +376,15 @@ public class PackageInstall(
             if (args.Object is not ColumnViewCell listItem) return;
             var check = new CheckButton { MarginStart = 10, MarginEnd = 10 };
             listItem.SetChild(check);
+            
+            check.OnToggled += (s, e) =>
+            {
+                if (listItem.GetItem() is not AlpmPackageGObject current) return;
+                current.IsSelected = s.GetActive();
+                _installButton.SetSensitive(AnySelected());
+            };
         };
-
+        
         _checkFactory.OnBind += (_, args) =>
         {
             if (args.Object is not ColumnViewCell listItem) return;
@@ -390,19 +392,11 @@ public class PackageInstall(
                 listItem.GetChild() is not CheckButton checkButton) return;
 
             checkButton.SetActive(pkgObj.IsSelected);
-            checkButton.OnToggled += OnToggled;
 
             pkgObj.OnSelectionToggled += OnExternalToggle;
-            _checkBinding[listItem] = (OnToggled, OnExternalToggle);
 
             return;
-
-            void OnToggled(CheckButton s, EventArgs e)
-            {
-                pkgObj.IsSelected = s.GetActive();
-                _installButton.SetSensitive(AnySelected());
-            }
-
+            
             void OnExternalToggle(object? s, EventArgs e)
             {
                 if (listItem.GetItem() == pkgObj)
@@ -411,17 +405,22 @@ public class PackageInstall(
                 }
             }
         };
+        
+        _checkFactory.OnUnbind += (_, args) => { };
+
+        _checkFactory.OnTeardown += (_, args) =>
+        {
+            if (args.Object is not ColumnViewCell listItem) return;
+            if (listItem.GetItem() is not AlpmPackageGObject pkgObj ||
+                listItem.GetChild() is not CheckButton checkButton) return;
+            listItem.SetChild(null);
+        };
 
         _checkFactory.OnUnbind += (_, args) =>
         {
             if (args.Object is not ColumnViewCell listItem) return;
             if (listItem.GetItem() is not AlpmPackageGObject pkgObj ||
                 listItem.GetChild() is not CheckButton checkButton) return;
-            if (_checkBinding.Remove(listItem, out var handlers))
-            {
-                pkgObj.OnSelectionToggled -= handlers.OnExternalToggle;
-                checkButton.OnToggled -= handlers.OnToggled;
-            }
         };
 
         checkColumn.SetFactory(_checkFactory);
@@ -453,8 +452,7 @@ public class PackageInstall(
             var iconPath = iconResolverService.GetIconPath(pkg.Name);
             if (!string.IsNullOrEmpty(iconPath) && iconPath != "Unavailable" && File.Exists(iconPath))
             {
-                var texture = Gdk.Texture.NewFromFilename(iconPath);
-                packageIcon.SetFromPaintable(texture);
+                packageIcon.SetFromFile(iconPath);
                 packageIcon.Visible = true;
             }
             else
@@ -794,7 +792,6 @@ public class PackageInstall(
         _cts.Dispose();
         _listStore.RemoveAll();
         _packageGObjectRefs.Clear();
-        _checkBinding.Clear();
         _packages.Clear();
         _groups.Clear();
         _installedPackageNames.Clear();
