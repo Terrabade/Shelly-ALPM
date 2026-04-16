@@ -5,9 +5,26 @@ using Shelly.Gtk.UiModels;
 
 namespace Shelly.Gtk.Windows.Dialog;
 
-public class SessionLogDialog
+public static class SessionLogDialog
 {
-    public static void ShowSessionLogDialog(Overlay parentOverlay, OperationLogEntry entry)
+    private static void CloseDialog(Overlay parentOverlay, Widget dialogBox)
+    {
+
+        try
+        {
+            parentOverlay.RemoveOverlay(dialogBox);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao remover overlay: {ex.Message}");
+        }
+        finally
+        {
+            dialogBox.Dispose();
+        }
+    }
+    
+    public static Widget ShowSessionLogDialog(Overlay parentOverlay, OperationLogEntry entry)
     {
         var box = Box.New(Orientation.Vertical, 12);
         box.SetHalign(Align.Center);
@@ -38,7 +55,7 @@ public class SessionLogDialog
         contentBox.SetMarginBottom(10);
         contentBox.SetMarginStart(10);
         contentBox.SetMarginEnd(10);
-        contentBox.Append(BuildSessionLogCard(entry));
+        contentBox.Append(BuildSessionLogCard(entry, entry.RawLines));
 
         var scrolledWindow = new ScrolledWindow();
         scrolledWindow.SetPolicy(PolicyType.Never, PolicyType.Automatic);
@@ -52,12 +69,15 @@ public class SessionLogDialog
 
         var closeButton = Button.NewWithLabel("Close");
         closeButton.AddCssClass("suggested-action");
-        closeButton.OnClicked += (_, _) => parentOverlay.RemoveOverlay(box);
+        
+        closeButton.OnClicked += (_, _) => CloseDialog(parentOverlay, box);
 
         buttonBox.Append(closeButton);
         box.Append(buttonBox);
+        
+        parentOverlay.AddOverlay(box); 
 
-        parentOverlay.AddOverlay(box);
+        return box;
     }
 
     private static Widget BuildSessionMetaBadge(OperationLogEntry entry)
@@ -90,7 +110,7 @@ public class SessionLogDialog
         return meta;
     }
 
-    private static Box BuildSessionLogCard(OperationLogEntry entry)
+    private static Box BuildSessionLogCard(OperationLogEntry entry, List<string> rawLines)
     {
         var card = Box.New(Orientation.Vertical, 8);
         card.AddCssClass("card");
@@ -105,7 +125,7 @@ public class SessionLogDialog
         header.SetMarginStart(8);
         header.SetMarginEnd(8);
 
-        var cmdLabel = Label.New(entry.Command);
+        var cmdLabel = Label.New(entry.Command ?? "");
         cmdLabel.AddCssClass("heading");
         cmdLabel.SetHalign(Align.Start);
         cmdLabel.SetXalign(0);
@@ -121,33 +141,23 @@ public class SessionLogDialog
         header.Append(dateLabel);
         card.Append(header);
 
-        var logBox = Box.New(Orientation.Vertical, 2);
-        logBox.SetMarginBottom(10);
-        logBox.SetMarginStart(8);
-        logBox.SetMarginEnd(8);
+        var textView = new TextView();
+        textView.Editable = false;
+        textView.Monospace = true;
+        textView.WrapMode = WrapMode.WordChar;
+        textView.SetMarginBottom(10);
+        textView.SetMarginStart(8);
+        textView.SetMarginEnd(8);
 
-        foreach (var line in entry.RawLines)
-        {
-            var lineLabel = Label.New(line);
-            lineLabel.SetXalign(0);
-            lineLabel.SetWrap(true);
-            lineLabel.SetWrapMode(Pango.WrapMode.WordChar);
-            lineLabel.SetSelectable(true);
-            lineLabel.AddCssClass("monospace");
+        var buffer = textView.Buffer;
 
-            if (line.Contains("SESSION START") || line.Contains("SESSION END"))
-                lineLabel.AddCssClass("accent");
-            else if (line.StartsWith("Command:"))
-                lineLabel.AddCssClass("heading");
-            else if (line.Contains("exit code:") && !line.Contains("exit code: 0"))
-                lineLabel.AddCssClass("error");
-            else
-                lineLabel.AddCssClass("dim-label");
+        var fullLogText = string.Join("\n", rawLines);
+        buffer.Text = fullLogText;  
 
-            logBox.Append(lineLabel);
-        }
-
-        card.Append(logBox);
+        card.Append(textView);
 
         return card;
-}}
+    }
+
+    
+}

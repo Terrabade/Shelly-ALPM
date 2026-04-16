@@ -39,6 +39,7 @@ public class HomeWindow(
     private Button _archNewsButton = null!;
     private Overlay _overlay = null!;
     private uint _updateTimerId;
+    private GObject.SignalHandler<ListBox, ListBox.RowActivatedSignalArgs>? _logRowActivatedHandler;
 
     public Widget CreateWindow()
     {
@@ -733,8 +734,7 @@ public class HomeWindow(
     {
         label.SetText(packages.Count.ToString());
     }
-
-
+    
     private async Task LoadUpdatesPanel(ListBox listBox, CancellationToken ct)
     {
         try
@@ -744,7 +744,6 @@ public class HomeWindow(
 
             GLib.Functions.IdleAdd(0, () =>
             {
-                // Clear existing rows
                 while (listBox.GetFirstChild() is { } child)
                     listBox.Remove(child);
 
@@ -935,14 +934,36 @@ public class HomeWindow(
         }
     }
     
-    private GObject.SignalHandler<ListBox, ListBox.RowActivatedSignalArgs>? _logRowActivatedHandler;
+    private Widget? _activeSessionLogOverlay;
 
     private void OnLogRowActivated(ListBoxRow row, List<OperationLogEntry> entries)
     {
         var index = row.GetIndex();
         if (index < 0 || index >= entries.Count) return;
+        
+        var entry = entries[index];
+        
+        if (_activeSessionLogOverlay is {} oldBox && oldBox.GetParent() == _overlay)
+        {
+            try
+            {
+                    _overlay.RemoveOverlay(oldBox);
+            }
+            catch
+            {
+                
+            }
+            oldBox.Dispose(); 
+            entry.RawLines?.Clear();
+            _activeSessionLogOverlay = null;
+        }
 
-        SessionLogDialog.ShowSessionLogDialog(_overlay, entries[index]);
+        var newBox = SessionLogDialog.ShowSessionLogDialog(_overlay, entry);
+        _activeSessionLogOverlay = newBox;
+
+        
+        if (newBox.GetParent() != _overlay) _overlay.AddOverlay(newBox);    
+        
     }
 
     
