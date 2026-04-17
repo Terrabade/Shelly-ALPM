@@ -64,17 +64,14 @@ public class AppImageSyncMeta : AsyncCommand<AppImageSyncMetaSettings>
                 }
             }
 
-            var package = new List<string> { targetAppImage.Replace(".AppImage", "") };
+            var package = new List<string> { Path.GetFileNameWithoutExtension(targetAppImage) };
             await manager.SyncAppImageMeta(package);
         }
         else
         {
             var appImages = Directory.GetFiles(installDir, "*.AppImage", SearchOption.TopDirectoryOnly);
-            foreach (var appImage in appImages)
-            {
-                var package = new List<string> { appImage.Replace(".AppImage", "") };
-                await manager.SyncAppImageMeta(package);
-            }
+            var appImageNames = appImages.Select(Path.GetFileNameWithoutExtension).Cast<string>().ToList();
+            await manager.SyncAppImageMeta(appImageNames);
         }
 
         return 0;

@@ -163,7 +163,7 @@ public class AppImageManager
     public async Task<int> RunUpdate(AppImageUpdateDto update)
     {
         var appImages = await GetAppImagesFromLocalDb();
-        var appImage = appImages.FirstOrDefault(a => a.Name == update.Name);
+        var appImage = appImages.FirstOrDefault(a => string.Equals(a.Name, update.Name, StringComparison.OrdinalIgnoreCase));
         if (appImage == null)
         {
             LogError($"AppImage '{update.Name}' not found in local database.");
@@ -259,7 +259,7 @@ public class AppImageManager
     {
         LogMessage($"Configuring updates for {name} {url}, type: {updateType}...");
         var appImages = await GetAppImagesFromLocalDb();
-        var appImage = appImages.FirstOrDefault(a => a.Name == name);
+        var appImage = appImages.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
         if (appImage == null) return false;
 
         appImage.UpdateURl = url;
@@ -513,11 +513,31 @@ public class AppImageManager
                     continue;
                 }
 
-                var existing = appImagesInDb.FirstOrDefault(a => a.Name == appName);
+                var existing = appImagesInDb.FirstOrDefault(a => string.Equals(a.Name, appName, StringComparison.OrdinalIgnoreCase));
                 if (existing != null)
                 {
-                    appImageDto.UpdateURl = existing.UpdateURl;
-                    appImageDto.UpdateType = existing.UpdateType;
+                    if (!string.IsNullOrEmpty(existing.UpdateURl))
+                    {
+                        appImageDto.UpdateURl = existing.UpdateURl;
+                        appImageDto.UpdateType = existing.UpdateType;
+                    }
+
+                    if (!string.IsNullOrEmpty(existing.RawUpdateInfo) && string.IsNullOrEmpty(appImageDto.RawUpdateInfo))
+                    {
+                        appImageDto.RawUpdateInfo = existing.RawUpdateInfo;
+                    }
+
+                    if (!string.IsNullOrEmpty(existing.UpdateVersion))
+                    {
+                        appImageDto.UpdateVersion = existing.UpdateVersion;
+                    }
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(appImageDto.RawUpdateInfo) && string.IsNullOrEmpty(appImageDto.UpdateURl))
+                    {
+                        appImageDto.UpdateType = UpdateType.StaticUrl;
+                    }
                 }
 
                 await AddAppImageToLocalDb(appImageDto);
@@ -685,7 +705,7 @@ public class AppImageManager
                 DesktopName = string.IsNullOrEmpty(desktopName) ? appName : desktopName,
                 SizeOnDisk = new FileInfo(filePath).Length,
             };
-
+            
             return appImageDto;
         }
         catch (Exception ex)
@@ -904,9 +924,9 @@ public class AppImageManager
         try
         {
             var appImages = await GetAppImagesFromLocalDb();
-            if (appImages.Any(a => a.Name == appImage.Name))
+            if (appImages.Any(a => string.Equals(a.Name, appImage.Name, StringComparison.OrdinalIgnoreCase)))
             {
-                appImages.RemoveAll(a => a.Name == appImage.Name);
+                appImages.RemoveAll(a => string.Equals(a.Name, appImage.Name, StringComparison.OrdinalIgnoreCase));
             }
 
             appImages.Add(appImage);
@@ -929,7 +949,7 @@ public class AppImageManager
         {
             var appImages = await GetAppImagesFromLocalDb();
             var initialCount = appImages.Count;
-            appImages.RemoveAll(a => a.Name == appImage.Name);
+            appImages.RemoveAll(a => string.Equals(a.Name, appImage.Name, StringComparison.OrdinalIgnoreCase));
 
             if (appImages.Count != initialCount)
             {
