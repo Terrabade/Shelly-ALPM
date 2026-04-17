@@ -9,7 +9,11 @@ public class OperationLogEntry
     public int? ExitCode { get; set; }
 
     public List<string> RawLines { get; set; } = [];
-
+    
+    public string SourceFile { get; set; } = string.Empty;
+    public int StartLine { get; set; }
+    public int EndLine { get; set; }
+    
     public string SessionId => Timestamp.ToString("yyyyMMdd_HHmmss");
 
 }

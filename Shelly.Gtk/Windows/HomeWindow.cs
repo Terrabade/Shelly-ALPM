@@ -1,5 +1,6 @@
 using System.Text;
 using Gtk;
+using Microsoft.VisualBasic.FileIO;
 using Shelly.Gtk.Helpers;
 using Shelly.Gtk.Services;
 using Shelly.Gtk.Services.Icons;
@@ -943,7 +944,7 @@ public class HomeWindow(
     private static int EstimateRawLinesSize(List<string> lines) =>
         lines.Sum(l => Encoding.UTF8.GetByteCount(l));
     
-    private void OnLogRowActivated(ListBoxRow row, List<OperationLogEntry> entries)
+    private async void OnLogRowActivated(ListBoxRow row, List<OperationLogEntry> entries)
     {
         
         var index = row.GetIndex();
@@ -957,13 +958,6 @@ public class HomeWindow(
             oldBox.Unparent();
             oldBox.Dispose();
             _activeSessionLogOverlay = null;
-        }
-        
-        if (EstimateRawLinesSize(entry.RawLines) > MaxRawLineBytes)
-        {
-            var toastArgs = new ToastMessageEventArgs("Session log is too large to display");
-            genericQuestionService.RaiseToastMessage(toastArgs);
-            return;
         }
         
         var container = new Box();
@@ -984,7 +978,15 @@ public class HomeWindow(
         textView.Monospace = true;
         textView.WrapMode = WrapMode.WordChar;
         
-        PopulateSessionBuffer(textView.Buffer, entry.RawLines);
+        var lines = await operationLogService.GetSessionExcerptAsync(entry, MaxRawLineBytes);
+        if (lines.Count == 0)
+        {
+            var toastArgs = new ToastMessageEventArgs("Session log is too large to display");
+            genericQuestionService.RaiseToastMessage(toastArgs);
+            return;
+        }        
+        PopulateSessionBuffer(textView.Buffer, lines);        
+        
         
         var scrolledWindow = new ScrolledWindow();
         scrolledWindow.SetVexpand(true);
