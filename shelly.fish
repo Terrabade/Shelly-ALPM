@@ -19,6 +19,7 @@ complete -c shelly -n __fish_use_subcommand -a update -d "Update one or more pac
 complete -c shelly -n __fish_use_subcommand -a upgrade -d "Perform a full system upgrade"
 complete -c shelly -n __fish_use_subcommand -a downgrade -d "Downgrade a package"
 complete -c shelly -n __fish_use_subcommand -a news -d "Shows Arch news you haven't seen before"
+complete -c shelly -n __fish_use_subcommand -a purify -d "Find and remove corrupted packages"
 complete -c shelly -n __fish_use_subcommand -a keyring -d "Manage pacman keyring"
 complete -c shelly -n __fish_use_subcommand -a aur -d "Manage AUR packages"
 complete -c shelly -n __fish_use_subcommand -a flatpak -d "Manage flatpak"
@@ -112,6 +113,9 @@ complete -c shelly -n "__fish_seen_subcommand_from downgrade" -s y -l sync -d "S
 
 # --- news (ArchNewsSettings) ---
 complete -c shelly -n "__fish_seen_subcommand_from news" -s a -l all -d "Show all Arch news"
+# --- purify (CorruptedPackagesSettings) ---
+complete -c shelly -n "__fish_seen_subcommand_from purify" -s n -l no-confirm -d "Skip confirmation prompts"
+complete -c shelly -n "__fish_seen_subcommand_from purify" -s d -l dry-run -d "Show what would be removed without removing"
 
 # =====================
 # keyring subcommands

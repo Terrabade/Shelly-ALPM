@@ -20,6 +20,7 @@ depends=(
     'hicolor-icon-theme'
     'dbus'
     'glibc'
+    'libarchive'
 )
 optdepends=(
     'flatpak: For supporting flatpak implementation.'
