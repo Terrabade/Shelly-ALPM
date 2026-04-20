@@ -33,6 +33,7 @@ public class HomeWindow(
     private List<RssModel> _archNewsItems = [];
     private List<RssModel> _newArchNewsItems = [];
     private List<OperationLogEntry>? _logEntries = [];
+    private List<string> _logLines = [];
     private Label? _totalAurLabel;
     private Label? _percentAurLabel;
     private Label? _totalPackageLabel;
@@ -952,9 +953,9 @@ public class HomeWindow(
 
         var entry = entries[index];
         
-        var lines = await operationLogService.GetSessionExcerptAsync(entry, MaxRawLineBytes);
+        _logLines = await operationLogService.GetSessionExcerptAsync(entry, MaxRawLineBytes);
 
-        if (lines.Count == 0)
+        if (_logLines.Count == 0)
         {
             genericQuestionService.RaiseToastMessage(
                 new ToastMessageEventArgs("Session log is too large to display")
@@ -966,7 +967,7 @@ public class HomeWindow(
         {
             try
             {
-                var fullLogText = string.Join("\n", lines);
+                var fullLogText = string.Join("\n", _logLines);
 
                 _logBox = new Box();
                 _logBox.SetOrientation(Orientation.Vertical);
@@ -1019,12 +1020,12 @@ public class HomeWindow(
             }
             catch (Exception e)
             {
-                // Here to not throw anything in case something goes wrong.
             }
 
             return false;
         });
     }
+    
     
     private static string GetIconForCommand(string command)
     {
@@ -1064,6 +1065,8 @@ public class HomeWindow(
         _cts.Dispose();
         _logEntries?.Clear();
         _logEntries = null;
+        _logLines.Clear();
+        _logLines = null;
         _args = null!;
 
     }
