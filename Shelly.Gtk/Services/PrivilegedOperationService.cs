@@ -532,6 +532,12 @@ public class PrivilegedOperationService : IPrivilegedOperationService
         return await ExecutePrivilegedCommandAsync("Delete corrupted packages", "purify");
     }
 
+    public async Task<OperationResult> FlatpakInstallFromBundle(string path)
+    {
+        return await ExecutePrivilegedCommandAsync("Install Flatpak Bundle", "flatpak", "install-bundle", path,
+            "--system", "true");
+    }
+
     private void SendDbusMessage(OperationResult result)
     {
         if (result.Success)

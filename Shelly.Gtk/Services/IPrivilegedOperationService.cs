@@ -40,6 +40,7 @@ public interface IPrivilegedOperationService
     Task<OperationResult> AppImageSyncApp(string name);
     Task<OperationResult> AppImageSyncAll();
     Task<OperationResult> PurifyCorruptionAsync();
+    Task<OperationResult> FlatpakInstallFromBundle(string path);
 }
 
 public class OperationResult

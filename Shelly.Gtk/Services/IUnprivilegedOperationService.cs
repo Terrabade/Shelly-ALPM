@@ -35,6 +35,8 @@ public interface IUnprivilegedOperationService
 
     Task<UnprivilegedOperationResult> FlatpakInsallFromRef(string path, string scope);
 
+    Task<UnprivilegedOperationResult> FlatpakInstallFromBundle(string path);
+
     Task<SyncModel> CheckForApplicationUpdates();
 
     Task<List<AlpmPackageUpdateDto>> CheckForStandardApplicationUpdates(bool showHidden = false);

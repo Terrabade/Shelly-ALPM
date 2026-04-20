@@ -13,6 +13,7 @@ namespace Shelly.Gtk.Windows.Flatpak;
 
 public class FlatpakInstall(
     IUnprivilegedOperationService unprivilegedOperationService,
+    IPrivilegedOperationService privilegedOperationService,
     ILockoutService lockoutService,
     IConfigService configService,
     IGenericQuestionService genericQuestionService,
@@ -132,7 +133,7 @@ public class FlatpakInstall(
         _remoteSelectionModel = new SingleSelection { Model = _remoteListStore };
         _listRemotes = (ListView)builder.GetObject("list_remotes")!;
         _listRemotes.SetModel(_remoteSelectionModel);
-        
+
         _overlayInstallButton.OnClicked += (_, _) => { _ = InstallSelectedAsync(); };
         _remoteRefButton.OnClicked += (_, _) => { _ = BuildAndShowRemoteRef(); };
         _remoteRefBackButton.OnClicked += (_, _) => { _remoteRefOverlay.Hide(); };
@@ -648,12 +649,12 @@ public class FlatpakInstall(
         verifiedIcon.SetVisible(app.IsVerified);
 
         var remotes = app.Remotes.FirstOrDefault() ?? new FlatpakRemoteDto();
-        
+
         var path = "";
         if (remotes.Scope == "user")
         {
             var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            path = 
+            path =
                 Path.Combine(userHome, $".local/share/flatpak/appstream", app.Remotes.FirstOrDefault()?.Name ?? "",
                     "x86_64/active/icons/64x64", $"{app.Id}.png");
         }
@@ -792,8 +793,9 @@ public class FlatpakInstall(
             dialog.SetTitle("Install Flatpak Ref");
 
             var filter = FileFilter.New();
-            filter.SetName("Local FlatpakRef files (\"*.FlatpakRef\"");
+            filter.SetName("Local Flatpak files (\"*.FlatpakRef\", \"*.flatpak)\"");
             filter.AddPattern("*.FlatpakRef");
+            filter.AddPattern("*.flatpak");
 
             var filters = Gio.ListStore.New(FileFilter.GetGType());
             filters.Append(filter);
@@ -803,25 +805,79 @@ public class FlatpakInstall(
 
             if (file is not null)
             {
-                lockoutService.Show($"Installing selected ref...");
-                var result =
-                    await unprivilegedOperationService.FlatpakInsallFromRef(file.GetPath()!, _selectedRefScope);
-                if (!result.Success)
+                lockoutService.Show($"Installing selected local flatpak file...");
+                if (file.GetPath()!.EndsWith(".FlatpakRef", StringComparison.OrdinalIgnoreCase))
                 {
-                    var args = new ToastMessageEventArgs(
-                        $"Installing Flatpak failed"
-                    );
-                    genericQuestionService.RaiseToastMessage(args);
-                    Console.WriteLine($"Failed to install local package: {result.Error}");
+                    var result =
+                        await unprivilegedOperationService.FlatpakInsallFromRef(file.GetPath()!, _selectedRefScope);
+                    if (!result.Success)
+                    {
+                        var args = new ToastMessageEventArgs(
+                            $"Installing Flatpak failed"
+                        );
+                        genericQuestionService.RaiseToastMessage(args);
+                        Console.WriteLine($"Failed to install local package: {result.Error}");
+                    }
+                    else
+                    {
+                        _overlayInstallButton.SetSensitive(false);
+
+                        var args = new ToastMessageEventArgs(
+                            $"Installed Flatpak"
+                        );
+                        genericQuestionService.RaiseToastMessage(args);
+                    }
                 }
                 else
                 {
-                    _overlayInstallButton.SetSensitive(false);
+                    var remotes = await unprivilegedOperationService.FlatpakListRemotes();
+                    var hasSystem = remotes.Any(r => r is { Scope: "system" });
 
-                    var args = new ToastMessageEventArgs(
-                        $"Installed Flatpak"
-                    );
-                    genericQuestionService.RaiseToastMessage(args);
+
+                    //This hoopla is because bundles require resolving their respective deps from the remotes config'd so we must use a flathub that is configured for the right level's.
+                    //ex: user level only user trys to install at system level, we must install at user level because that is what their flathub is configured for.
+                    if (hasSystem && _selectedRefScope == "system")
+                    {
+                        var privResult =
+                            await privilegedOperationService.FlatpakInstallFromBundle(file.GetPath()!);
+
+                        if (!privResult.Success)
+                        {
+                            var args = new ToastMessageEventArgs(
+                                $"Installing Flatpak failed"
+                            );
+                            genericQuestionService.RaiseToastMessage(args);
+                            Console.WriteLine($"Failed to install local bundle: {privResult.Error}");
+                        }
+                        else
+                        {
+                            var args = new ToastMessageEventArgs(
+                                $"Installed Flatpak"
+                            );
+                            genericQuestionService.RaiseToastMessage(args);
+                        }
+                    }
+                    else
+                    {
+                        var unprivResult =
+                            await unprivilegedOperationService.FlatpakInstallFromBundle(file.GetPath()!);
+
+                        if (!unprivResult.Success)
+                        {
+                            var args = new ToastMessageEventArgs(
+                                $"Installing Flatpak failed"
+                            );
+                            genericQuestionService.RaiseToastMessage(args);
+                            Console.WriteLine($"Failed to install local bundle: {unprivResult.Error}");
+                        }
+                        else
+                        {
+                            var args = new ToastMessageEventArgs(
+                                $"Installed Flatpak"
+                            );
+                            genericQuestionService.RaiseToastMessage(args);
+                        }
+                    }
                 }
             }
         }
@@ -1194,7 +1250,6 @@ public class FlatpakInstall(
 
     private async Task BuildAndShowRemoteRef()
     {
-
         if (_remoteFactory == null)
         {
             _remoteFactory = new SignalListItemFactory();
