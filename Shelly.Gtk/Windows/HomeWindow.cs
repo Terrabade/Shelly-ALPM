@@ -951,15 +951,7 @@ public class HomeWindow(
         if (index < 0 || index >= entries.Count) return;
 
         var entry = entries[index];
-
-        if (_activeSessionLogOverlay is { } oldBox && oldBox.GetParent() == _overlay)
-        {
-            try { _overlay.RemoveOverlay(oldBox); } catch { }
-            oldBox.Unparent();
-            oldBox.Dispose();
-            _activeSessionLogOverlay = null;
-        }
-
+        
         var lines = await operationLogService.GetSessionExcerptAsync(entry, MaxRawLineBytes);
 
         if (lines.Count == 0)
