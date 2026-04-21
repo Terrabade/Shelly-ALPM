@@ -1,5 +1,6 @@
 using PackageManager.Alpm;
 using PackageManager.Aur;
+using Shelly_CLI.Configuration;
 using Shelly_CLI.Utility;
 using Spectre.Console;
 
@@ -7,11 +8,26 @@ namespace Shelly_CLI.ConsoleLayouts;
 
 public static class AurSplitOutput
 {
+    private sealed class BarState
+    {
+        public string Name = "";
+        public ulong Current;
+        public ulong HowMany;
+        public int Pct;
+        public string ActionType = "";
+        public bool Completed;
+    }
+
     public static async Task<bool> Output(AurPackageManager manager, Func<AurPackageManager, Task> operation,
         bool noConfirm = false,
         int consoleRatio = 3,
         int progressRatio = 2)
     {
+        var cfg = ConfigManager.ReadConfig();
+        var style = ProgressBarRenderer.ParseStyle(cfg.ProgressBarStyle);
+        var fps = Math.Clamp(cfg.ProgressBarFps, 1, 30);
+        var barWidth = cfg.ProgressBarWidth;
+
         var consoleLines = new List<string>();
         var progressLines = new List<string>();
         var maxVisibleLines = Console.WindowHeight - 4;
@@ -66,26 +82,47 @@ public static class AurSplitOutput
             }
         };
 
+        var rows = new Dictionary<string, BarState>(StringComparer.Ordinal);
+        var order = new List<string>();
+
+        string RenderLine(BarState r, int frame)
+        {
+            var bar = ProgressBarRenderer.Render(r.Pct, frame, style, barWidth);
+            return $"({r.Current}/{r.HowMany}) {r.ActionType} " +
+                   $"[bold]{r.Name.EscapeMarkup()}[/] {bar} {r.Pct,3}%";
+        }
+
+        void RebuildProgressLines(int frame)
+        {
+            progressLines.Clear();
+            foreach (var key in order)
+            {
+                progressLines.Add(RenderLine(rows[key], frame));
+            }
+        }
+
         manager.Progress += (sender, e) =>
         {
             var name = e.PackageName ?? "unknown";
             var pct = e.Percent ?? 0;
-            var bar = new string('█', pct / 5) + new string('░', 20 - pct / 5);
-            var actionType = e.ProgressType;
-
-            var line =
-                $"({e.Current}/{e.HowMany}) {actionType} [bold]{name.EscapeMarkup()}[/] [green]{bar}[/] {pct,3}%";
+            var actionType = e.ProgressType.ToString();
 
             lock (renderLock)
             {
-                if (progressLines.Count > 0 && progressLines[^1].Contains(name.EscapeMarkup()))
+                if (!rows.TryGetValue(name, out var r))
                 {
-                    progressLines[^1] = line;
+                    r = new BarState { Name = name };
+                    rows[name] = r;
+                    order.Add(name);
                 }
-                else
-                {
-                    progressLines.Add(line);
-                }
+
+                r.Current = e.Current ?? 0;
+                r.HowMany = e.HowMany ?? 0;
+                r.Pct = pct;
+                r.ActionType = actionType;
+                if (pct >= 100) r.Completed = true;
+
+                RebuildProgressLines(frame: 0);
 
                 var visible = progressLines.Skip(Math.Max(0, progressLines.Count - maxVisibleLines)).ToList();
                 layout["Progress"].Update(
@@ -246,9 +283,7 @@ public static class AurSplitOutput
                 if (e.Percent.HasValue)
                 {
                     var prefix = $"[bold]{e.PackageName.EscapeMarkup()}[/] ";
-                    var barLength = 20;
-                    var filled = (int)(barLength * e.Percent.Value / 100.0);
-                    var bar = new string('█', filled) + new string('░', barLength - filled);
+                    var bar = ProgressBarRenderer.RenderStatic(e.Percent.Value, 20);
                     var line =
                         $"{prefix}[yellow]{bar} {e.Percent.Value}%[/] {(e.ProgressMessage ?? "").EscapeMarkup()}";
 
@@ -356,7 +391,44 @@ public static class AurSplitOutput
         await AnsiConsole.Live(layout).StartAsync(async ctx =>
         {
             liveCtx = ctx;
-            await operation(manager);
+
+            if (!ProgressBarRenderer.ShouldAnimate(style))
+            {
+                await operation(manager);
+                return;
+            }
+
+            using var cts = new CancellationTokenSource();
+            var delay = TimeSpan.FromMilliseconds(1000.0 / fps);
+
+            var ticker = Task.Run(async () =>
+            {
+                int frame = 0;
+                while (!cts.IsCancellationRequested)
+                {
+                    frame++;
+                    lock (renderLock)
+                    {
+                        RebuildProgressLines(frame);
+                    }
+
+                    SplitOutputHelpers.UpdatePanel(layout, "Progress", progressLines,
+                        maxVisibleLines, renderLock, liveCtx);
+
+                    try { await Task.Delay(delay, cts.Token); }
+                    catch (TaskCanceledException) { break; }
+                }
+            }, cts.Token);
+
+            try
+            {
+                await operation(manager);
+            }
+            finally
+            {
+                cts.Cancel();
+                try { await ticker; } catch { }
+            }
         });
         return !hadError;
     }

@@ -1,4 +1,5 @@
 using PackageManager.Alpm;
+using Shelly_CLI.Configuration;
 using Shelly_CLI.Utility;
 using Spectre.Console;
 
@@ -6,10 +7,25 @@ namespace Shelly_CLI.ConsoleLayouts;
 
 public static class SplitOutput
 {
+    private sealed class BarState
+    {
+        public string Name = "";
+        public ulong Current;
+        public ulong HowMany;
+        public int Pct;
+        public string ActionType = "";
+        public bool Completed;
+    }
+
     public static async Task<bool> Output(IAlpmManager manager, Func<IAlpmManager, Task<bool>> operation, bool noConfirm = false,
         int consoleRation = 3,
         int progressRatio = 2)
     {
+        var cfg = ConfigManager.ReadConfig();
+        var style = ProgressBarRenderer.ParseStyle(cfg.ProgressBarStyle);
+        var fps = Math.Clamp(cfg.ProgressBarFps, 1, 30);
+        var barWidth = cfg.ProgressBarWidth;
+
         var consoleLines = new List<string>();
         var progressLines = new List<string>();
         var maxVisibleLines = Console.WindowHeight - 4; // adjust as needed
@@ -26,23 +42,50 @@ public static class SplitOutput
         layout["Progress"].Update(new Panel("Waiting...").Header("Progress").Expand());
         LiveDisplayContext? liveCtx = null;
         object renderLock = new();
+
+        var rows = new Dictionary<string, BarState>(StringComparer.Ordinal);
+        var order = new List<string>();
+
+        string RenderLine(BarState r, int frame)
+        {
+            var bar = ProgressBarRenderer.Render(r.Pct, frame, style, barWidth);
+            return $"({r.Current}/{r.HowMany}) {r.ActionType} " +
+                   $"[bold]{r.Name.EscapeMarkup()}[/] {bar} {r.Pct,3}%";
+        }
+
+        void RebuildProgressLines(int frame)
+        {
+            progressLines.Clear();
+            foreach (var key in order)
+            {
+                progressLines.Add(RenderLine(rows[key], frame));
+            }
+        }
+
         manager.Progress += (sender, e) =>
         {
             var name = e.PackageName ?? "unknown";
             var pct = e.Percent ?? 0;
-            var bar = new string('█', pct / 5) + new string('░', 20 - pct / 5);
-            var actionType = e.ProgressType;
+            var actionType = e.ProgressType.ToString();
 
-            var line =
-                $"({e.Current}/{e.HowMany}) {actionType} [bold]{name.EscapeMarkup()}[/] [green]{bar}[/] {pct,3}%";
+            lock (renderLock)
+            {
+                if (!rows.TryGetValue(name, out var r))
+                {
+                    r = new BarState { Name = name };
+                    rows[name] = r;
+                    order.Add(name);
+                }
 
-            // Replace last line if same package, otherwise add new line
-            if (progressLines.Count > 0 && progressLines[^1].Contains(name.EscapeMarkup()))
-                progressLines[^1] = line;
-            else
-                progressLines.Add(line);
+                r.Current = e.Current ?? 0;
+                r.HowMany = e.HowMany ?? 0;
+                r.Pct = pct;
+                r.ActionType = actionType;
+                if (pct >= 100) r.Completed = true;
 
-            // Take only the last N lines to simulate scrolling
+                RebuildProgressLines(frame: 0);
+            }
+
             SplitOutputHelpers.UpdatePanel(layout, "Progress", progressLines, maxVisibleLines, renderLock, liveCtx);
         };
 
@@ -151,7 +194,44 @@ public static class SplitOutput
         await AnsiConsole.Live(layout).StartAsync(async ctx =>
         {
             liveCtx = ctx;
-            result = await operation(manager);
+
+            if (!ProgressBarRenderer.ShouldAnimate(style))
+            {
+                result = await operation(manager);
+                return;
+            }
+
+            using var cts = new CancellationTokenSource();
+            var delay = TimeSpan.FromMilliseconds(1000.0 / fps);
+
+            var ticker = Task.Run(async () =>
+            {
+                int frame = 0;
+                while (!cts.IsCancellationRequested)
+                {
+                    frame++;
+                    lock (renderLock)
+                    {
+                        RebuildProgressLines(frame);
+                    }
+
+                    SplitOutputHelpers.UpdatePanel(layout, "Progress", progressLines,
+                        maxVisibleLines, renderLock, liveCtx);
+
+                    try { await Task.Delay(delay, cts.Token); }
+                    catch (TaskCanceledException) { break; }
+                }
+            }, cts.Token);
+
+            try
+            {
+                result = await operation(manager);
+            }
+            finally
+            {
+                cts.Cancel();
+                try { await ticker; } catch { }
+            }
         });
         return result;
     }

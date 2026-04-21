@@ -33,4 +33,8 @@ public class ShellyConfig
     public bool ShellyIconsEnabled { get; set; } = true;
     public bool AppImageEnabled { get; set; } = false;
     public bool NewInstallInitSettings { get; set; } = false;
+
+    public string ProgressBarStyle { get; set; } = nameof(ProgressBarStyleKind.Blocks);
+    public int ProgressBarFps { get; set; } = 7;
+    public int ProgressBarWidth { get; set; } = 24;
 }
