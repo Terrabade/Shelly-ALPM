@@ -60,15 +60,64 @@ public class AurSearchManager : IAurSearchManager, IDisposable
         for (var i = 0; i < names.Count; i += chunkSize)
         {
             var chunk = names.Skip(i).Take(chunkSize).ToList();
-            var queryParams = string.Join("&", chunk.Select(n => $"arg[]={Uri.EscapeDataString(n)}"));
-            var url = $"{BaseUrl}?v=5&type=info&{queryParams}";
 
-            var response =
-                await _httpClient.GetFromJsonAsync(url, AurJsonContext.Default.AurResponseAurPackageDto,
-                    cancellationToken);
+            var form = new List<KeyValuePair<string, string>>(chunk.Count + 2)
+            {
+                new("v", "5"),
+                new("type", "info"),
+            };
+            foreach (var name in chunk)
+            {
+                form.Add(new KeyValuePair<string, string>("arg[]", name));
+            }
+
+            using var content = new FormUrlEncodedContent(form);
+
+            AurResponse<AurPackageDto>? response;
+            try
+            {
+                using var httpResponse = await _httpClient.PostAsync(BaseUrl, content, cancellationToken);
+                httpResponse.EnsureSuccessStatusCode();
+
+                response = await httpResponse.Content.ReadFromJsonAsync(
+                    AurJsonContext.Default.AurResponseAurPackageDto, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                await Console.Error.WriteLineAsync($"AUR RPC request failed: {ex.Message}");
+                return new AurResponse<AurPackageDto>
+                {
+                    Type = "error",
+                    Error = ex.Message,
+                    Results = allResults,
+                    ResultCount = allResults.Count,
+                };
+            }
+            catch (TaskCanceledException ex)
+            {
+                await Console.Error.WriteLineAsync($"AUR RPC request timed out: {ex.Message}");
+                return new AurResponse<AurPackageDto>
+                {
+                    Type = "error",
+                    Error = "timeout",
+                    Results = allResults,
+                    ResultCount = allResults.Count,
+                };
+            }
+            catch (JsonException ex)
+            {
+                await Console.Error.WriteLineAsync($"AUR RPC returned non-JSON body: {ex.Message}");
+                return new AurResponse<AurPackageDto>
+                {
+                    Type = "error",
+                    Error = ex.Message,
+                    Results = allResults,
+                    ResultCount = allResults.Count,
+                };
+            }
 
             if (response == null) continue;
-            
+
             if (response.Type == "error")
             {
                 return response;

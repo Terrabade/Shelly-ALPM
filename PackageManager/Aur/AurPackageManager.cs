@@ -61,7 +61,17 @@ public class AurPackageManager(string? configPath = null)
 {
     private AlpmManager _alpm;
     private AurSearchManager _aurSearchManager;
-    private HttpClient _httpClient = new HttpClient();
+    private HttpClient _httpClient = CreateAurHttpClient();
+
+    private static HttpClient CreateAurHttpClient()
+    {
+        var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(20),
+        };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Shelly/1.0 (+https://github.com/zoe-codez/Shelly-ALPM)");
+        return client;
+    }
     private List<string> _availablePackages = [];
     private readonly HashSet<string> _currentlyInstallingAurDeps = new();
     private bool _useChroot = false;
