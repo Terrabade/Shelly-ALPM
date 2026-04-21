@@ -130,7 +130,34 @@ public static class ConfigManager
             }
             else
             {
-                convertedValue = value;
+                if (property.Name == nameof(ShellyConfig.ProgressBarStyle))
+                {
+                    if (!Enum.TryParse<ProgressBarStyleKind>(value, true, out var parsed))
+                    {
+                        return false;
+                    }
+                    convertedValue = parsed.ToString();
+                }
+                else if (property.Name == nameof(ShellyConfig.FileSizeDisplay))
+                {
+                    if (!Enum.TryParse<SizeDisplay>(value, true, out var parsed))
+                    {
+                        return false;
+                    }
+                    convertedValue = parsed.ToString();
+                }
+                else if (property.Name == nameof(ShellyConfig.DefaultExecution))
+                {
+                    if (!Enum.TryParse<DefaultCommand>(value, true, out var parsed))
+                    {
+                        return false;
+                    }
+                    convertedValue = parsed.ToString();
+                }
+                else
+                {
+                    convertedValue = value;
+                }
             }
         }
         catch

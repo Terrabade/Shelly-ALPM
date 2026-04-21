@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using PackageManager.Alpm;
+using Shelly_CLI.ConsoleLayouts;
 using Shelly_CLI.Utility;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -74,7 +75,7 @@ public class UpdateCommand : Command<PackageSettings>
                     {
                         var name = args.PackageName ?? "unknown";
                         var pct = args.Percent ?? 0;
-                        var bar = new string('█', pct / 5) + new string('░', 20 - pct / 5);
+                        var bar = ProgressBarRenderer.RenderStatic(pct, 20);
                         var actionType = args.ProgressType;
 
                         if (!rowIndex.TryGetValue(name, out var idx))
