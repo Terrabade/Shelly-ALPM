@@ -136,7 +136,7 @@ public class AppImageManager
                 foreach (var df in potentialDesktopFiles)
                 {
                     var content = await File.ReadAllLinesAsync(df);
-                    if (!content.Any(l => l.StartsWith("Exec=") && l.Contains(appImagePath))) continue;
+                    if (!content.Any(l => l.StartsWith("Exec=") && (l.Contains(appImagePath) || l.Contains($"\"{appImagePath}\"")))) continue;
                     File.Delete(df);
                     LogMessage($"Removed desktop entry: {df}");
                     UpdateDesktopDatabase(desktopDir);
@@ -660,7 +660,7 @@ public class AppImageManager
                     {
                         if (line.StartsWith("Exec="))
                         {
-                            patchedContent.AppendLine($"Exec={filePath}");
+                            patchedContent.AppendLine($"Exec=\"{filePath}\"");
                         }
                         else if (line.StartsWith("Icon="))
                         {
@@ -815,7 +815,7 @@ public class AppImageManager
         content.AppendLine("Type=Application");
         content.AppendLine($"Name={appName}");
         content.AppendLine($"Comment={comment ?? $"{appName} application"}");
-        content.AppendLine($"Exec={executablePath}");
+        content.AppendLine($"Exec=\"{executablePath}\"");
         content.AppendLine($"Icon={icon}");
         content.AppendLine($"Terminal={terminal.ToString().ToLower()}");
         content.AppendLine($"Categories={categories}");
