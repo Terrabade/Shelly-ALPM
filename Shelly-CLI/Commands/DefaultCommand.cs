@@ -40,6 +40,8 @@ public class DefaultCommand : AsyncCommand<DefaultCommandSettings>
             return 1;
         }
 
+        var exitOption = "Exit";
+        
         if (!string.IsNullOrEmpty(settings.SearchString))
         {
             RootElevator.EnsureRootExectuion();
@@ -49,7 +51,13 @@ public class DefaultCommand : AsyncCommand<DefaultCommandSettings>
                 new SelectionPrompt<string>()
                     .Title($"[yellow]Found {standard.Count + aur.Count} packages please select one to install[/]")
                     .AddChoices(standard.Select(x => $"{x.Name} : {x.Version} : Standard"))
-                    .AddChoices(aur.Select(x => $"{x.Name} : {x.Version} : AUR")));
+                    .AddChoices(aur.Select(x => $"{x.Name} : {x.Version} : AUR"))
+                    .AddChoices(exitOption)
+                    .UseConverter(choice => choice == exitOption ? $"[yellow]{exitOption}[/]" : choice));
+            if (selection == exitOption)
+            {
+                return 0;
+            }
             var selectionArray = selection.Split(":");
             var name = selectionArray[0].Trim();
             Console.WriteLine(name);
@@ -68,7 +76,7 @@ public class DefaultCommand : AsyncCommand<DefaultCommandSettings>
                     Packages = [name]
                 }).Wait();
             }
-
+            
             return 0;
         }
 
