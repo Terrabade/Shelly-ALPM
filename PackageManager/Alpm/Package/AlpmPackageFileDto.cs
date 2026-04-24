@@ -4,5 +4,5 @@ namespace PackageManager.Alpm.Package;
 
 public record AlpmPackageFileDto(string Name)
 {
-    private List<AlpmPackageFileDto> Files { get; set; } = [];
+    public List<AlpmPackageFileDto> Files { get; } = [];
 }
