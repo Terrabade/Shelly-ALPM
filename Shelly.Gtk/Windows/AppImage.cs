@@ -126,9 +126,27 @@ public class AppImage(
         hbox.MarginTop = 8;
         hbox.MarginBottom = 8;
 
-        var iconName = string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName;
-        var icon = Image.NewFromIconName(iconName);
+        var icon = Image.New();
         icon.PixelSize = 32;
+
+        var iconFilePath = ResolveIconFilePath(app.IconName);
+        if (iconFilePath != null)
+        {
+            try
+            {
+                var texture = Gdk.Texture.NewFromFilename(iconFilePath);
+                icon.SetFromPaintable(texture);
+            }
+            catch
+            {
+                icon.SetFromIconName(string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName);
+            }
+        }
+        else
+        {
+            icon.SetFromIconName(string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName);
+        }
+
         hbox.Append(icon);
 
         var vbox = Box.New(Orientation.Vertical, 2);
@@ -160,6 +178,28 @@ public class AppImage(
 
         row.SetChild(hbox);
         return row;
+    }
+
+    private static string? ResolveIconFilePath(string? iconName)
+    {
+        if (string.IsNullOrEmpty(iconName)) return null;
+
+        string[] searchDirs =
+        [
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/icons/hicolor/256x256/apps"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/icons/hicolor/scalable/apps"),
+            "/usr/share/icons/hicolor/256x256/apps",
+            "/usr/share/icons/hicolor/scalable/apps"
+        ];
+
+        foreach (var dir in searchDirs)
+        {
+            if (!Directory.Exists(dir)) continue;
+            var matches = Directory.GetFiles(dir, $"{iconName}.*");
+            if (matches.Length > 0) return matches[0];
+        }
+
+        return null;
     }
 
     private void FilterList()
@@ -281,7 +321,23 @@ public class AppImage(
         _detailVersionLabel.SetText($"Version {app.Version}");
         _detailDescriptionLabel.SetText(app.Description);
         _detailSizeLabel.SetText(SizeHelpers.FormatSize(app.SizeOnDisk));
-        _detailIcon.IconName = string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName;
+        var detailIconFilePath = ResolveIconFilePath(app.IconName);
+        if (detailIconFilePath != null)
+        {
+            try
+            {
+                var texture = Gdk.Texture.NewFromFilename(detailIconFilePath);
+                _detailIcon.SetFromPaintable(texture);
+            }
+            catch
+            {
+                _detailIcon.IconName = string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName;
+            }
+        }
+        else
+        {
+            _detailIcon.IconName = string.IsNullOrEmpty(app.IconName) ? "application-x-executable-symbolic" : app.IconName;
+        }
         _updateTypeDropDown.Selected = (uint)app.UpdateType;
         _updateUrlEntry.SetText(app.UpdateURl);
         _installPathEntry.SetText($"/opt/shelly/{app.Name}");

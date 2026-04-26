@@ -108,8 +108,8 @@ public class AppImageManager
     {
         var appName = Path.GetFileNameWithoutExtension(appImagePath);
         var cleanName = CleanInvalidNames(appName);
-        const string desktopDir = "/usr/share/applications";
-        var desktopFilePath = Path.Combine(desktopDir, $"{cleanName}.desktop");
+        var userDataHome = XdgPaths.DataHome();
+        string[] desktopDirs = ["/usr/share/applications", Path.Combine(userDataHome, "applications")];
 
         try
         {
@@ -121,34 +121,42 @@ public class AppImageManager
                 LogMessage($"Removed AppImage: {appImagePath}");
             }
 
-            if (File.Exists(desktopFilePath))
+            foreach (var desktopDir in desktopDirs)
             {
-                File.Delete(desktopFilePath);
-                LogMessage($"Removed desktop entry: {desktopFilePath}");
-                UpdateDesktopDatabase(desktopDir);
-            }
-            else
-            {
-                var potentialDesktopFiles = Directory.GetFiles(desktopDir, "*.desktop")
-                    .Where(f => Path.GetFileName(f).Contains(cleanName, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                if (!Directory.Exists(desktopDir)) continue;
 
-                foreach (var df in potentialDesktopFiles)
+                var desktopFilePath = Path.Combine(desktopDir, $"{cleanName}.desktop");
+                if (File.Exists(desktopFilePath))
                 {
-                    var content = await File.ReadAllLinesAsync(df);
-                    if (!content.Any(l => l.StartsWith("Exec=") && (l.Contains(appImagePath) || l.Contains($"\"{appImagePath}\"")))) continue;
-                    File.Delete(df);
-                    LogMessage($"Removed desktop entry: {df}");
+                    File.Delete(desktopFilePath);
+                    LogMessage($"Removed desktop entry: {desktopFilePath}");
                     UpdateDesktopDatabase(desktopDir);
-                    break;
+                }
+                else
+                {
+                    var potentialDesktopFiles = Directory.GetFiles(desktopDir, "*.desktop")
+                        .Where(f => Path.GetFileName(f).Contains(cleanName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var df in potentialDesktopFiles)
+                    {
+                        var content = await File.ReadAllLinesAsync(df);
+                        if (!content.Any(l => l.StartsWith("Exec=") && (l.Contains(appImagePath) || l.Contains($"\"{appImagePath}\"")))) continue;
+                        File.Delete(df);
+                        LogMessage($"Removed desktop entry: {df}");
+                        UpdateDesktopDatabase(desktopDir);
+                        break;
+                    }
                 }
             }
 
             string[] iconDirs =
-            {
+            [
                 "/usr/share/icons/hicolor/scalable/apps",
-                "/usr/share/icons/hicolor/256x256/apps"
-            };
+                "/usr/share/icons/hicolor/256x256/apps",
+                Path.Combine(userDataHome, "icons/hicolor/scalable/apps"),
+                Path.Combine(userDataHome, "icons/hicolor/256x256/apps")
+            ];
 
             foreach (var iconDir in iconDirs)
             {
@@ -631,22 +639,32 @@ public class AppImageManager
                     extension = ".png";
                 }
 
-                var iconDir = extension == ".svg" ? "/usr/share/icons/hicolor/scalable/apps" : "/usr/share/icons/hicolor/256x256/apps";
-
-                Directory.CreateDirectory(iconDir);
+                var iconSubDir = extension == ".svg" ? "icons/hicolor/scalable/apps" : "icons/hicolor/256x256/apps";
+                var systemIconDir = Path.Combine("/usr/share", iconSubDir);
+                var userIconDir = Path.Combine(XdgPaths.DataHome(), iconSubDir);
 
                 destIconName = $"{CleanInvalidNames(appName).ToLower()}{extension}";
-                var destIconPath = Path.Combine(iconDir, destIconName);
 
-                try
+                foreach (var iconDir in new[] { systemIconDir, userIconDir })
                 {
-                    File.Copy(iconPath, destIconPath, true);
-                    finalIconPath = destIconName;
-                    LogMessage($"Updated icon: {destIconPath}");
+                    try
+                    {
+                        Directory.CreateDirectory(iconDir);
+                        var destIconPath = Path.Combine(iconDir, destIconName);
+                        File.Copy(iconPath, destIconPath, true);
+                        finalIconPath = CleanInvalidNames(appName).ToLower();
+                        LogMessage($"Updated icon: {destIconPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWarning($"Could not copy icon to {iconDir}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+
+                foreach (var themeDir in new[] { "/usr/share/icons/hicolor", Path.Combine(XdgPaths.DataHome(), "icons/hicolor") })
                 {
-                    LogWarning($"Could not copy icon: {ex.Message}");
+                    if (Directory.Exists(themeDir))
+                        UpdateIconCache(themeDir);
                 }
             }
 
@@ -654,9 +672,9 @@ public class AppImageManager
             {
                 try
                 {
-                    var desktopContent = await File.ReadAllLinesAsync(desktopFile);
+                    var desktopLines = await File.ReadAllLinesAsync(desktopFile);
                     var patchedContent = new StringBuilder();
-                    foreach (var line in desktopContent)
+                    foreach (var line in desktopLines)
                     {
                         if (line.StartsWith("Exec="))
                         {
@@ -687,19 +705,30 @@ public class AppImageManager
                         }
                     }
 
-                    const string desktopDir = "/usr/share/applications";
-                    Directory.CreateDirectory(desktopDir);
                     var cleanName = CleanInvalidNames(appName);
-                    var desktopFilePath = Path.Combine(desktopDir, $"{cleanName}.desktop");
+                    var desktopFileName = $"{cleanName}.desktop";
+                    var desktopContent = patchedContent.ToString();
 
-                    await File.WriteAllTextAsync(desktopFilePath, patchedContent.ToString());
-                    SetFilePermissions(desktopFilePath, "644");
-                    UpdateDesktopDatabase(desktopDir);
-                    LogMessage($"Updated desktop entry: {desktopFilePath}");
+                    foreach (var desktopDir in new[] { "/usr/share/applications", Path.Combine(XdgPaths.DataHome(), "applications") })
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(desktopDir);
+                            var desktopFilePath = Path.Combine(desktopDir, desktopFileName);
+                            await File.WriteAllTextAsync(desktopFilePath, desktopContent);
+                            SetFilePermissions(desktopFilePath, "644");
+                            UpdateDesktopDatabase(desktopDir);
+                            LogMessage($"Updated desktop entry: {desktopFilePath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogWarning($"Could not update desktop entry in {desktopDir}: {ex.Message}");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    LogWarning($"Could not update desktop entry: {ex.Message}");
+                    LogWarning($"Could not update any desktop entry: {ex.Message}");
                     CreateDesktopEntry(appName, filePath, icon: finalIconPath);
                 }
             }
@@ -805,9 +834,8 @@ public class AppImageManager
         bool terminal = false,
         string categories = "Utility;")
     {
-        const string desktopDir = "/usr/share/applications";
         var cleanName = CleanInvalidNames(appName);
-        var desktopFilePath = Path.Combine(desktopDir, $"{cleanName}.desktop");
+        var desktopFileName = $"{cleanName}.desktop";
 
         var content = new StringBuilder();
         content.AppendLine("[Desktop Entry]");
@@ -821,18 +849,22 @@ public class AppImageManager
         content.AppendLine($"Categories={categories}");
         content.AppendLine("StartupNotify=true");
 
-        try
+        foreach (var desktopDir in new[] { "/usr/share/applications", Path.Combine(XdgPaths.DataHome(), "applications") })
         {
-            Directory.CreateDirectory(desktopDir);
-            File.WriteAllText(desktopFilePath, content.ToString());
-            SetFilePermissions(desktopFilePath, "644");
-            UpdateDesktopDatabase(desktopDir);
+            try
+            {
+                Directory.CreateDirectory(desktopDir);
+                var desktopFilePath = Path.Combine(desktopDir, desktopFileName);
+                File.WriteAllText(desktopFilePath, content.ToString());
+                SetFilePermissions(desktopFilePath, "644");
+                UpdateDesktopDatabase(desktopDir);
 
-            LogMessage($"Desktop entry created: {desktopFilePath}");
-        }
-        catch (Exception ex)
-        {
-            LogWarning($"Could not create desktop entry: {ex.Message}");
+                LogMessage($"Desktop entry created: {desktopFilePath}");
+            }
+            catch (Exception ex)
+            {
+                LogWarning($"Could not create desktop entry in {desktopDir}: {ex.Message}");
+            }
         }
     }
 
@@ -902,6 +934,27 @@ public class AppImageManager
         catch (Exception ex)
         {
             LogWarning($"Could not set desktop database: {ex.Message}");
+        }
+    }
+
+    private void UpdateIconCache(string iconThemeDir)
+    {
+        try
+        {
+            var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "gtk-update-icon-cache",
+                Arguments = $"-f -t \"{iconThemeDir}\"",
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            process?.WaitForExit();
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"Could not update icon cache for {iconThemeDir}: {ex.Message}");
         }
     }
 
