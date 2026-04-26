@@ -19,8 +19,54 @@ sealed class Program
 {
     private static string? _requestedPage;
 
+    [System.Runtime.InteropServices.DllImport("libc")]
+    private static extern int getuid();
+
+    private static void EnsureSessionEnvironment()
+    {
+        var uid = getuid();
+
+        // 1. XDG_RUNTIME_DIR — required for the session bus socket path
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR")))
+        {
+            var runtime = $"/run/user/{uid}";
+            if (Directory.Exists(runtime))
+                Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", runtime);
+        }
+
+        // 2. DBUS_SESSION_BUS_ADDRESS — dconf needs this to read GSettings
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS")))
+        {
+            var rd = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+            if (!string.IsNullOrEmpty(rd))
+            {
+                var sock = $"{rd}/bus";
+                if (File.Exists(sock))
+                    Environment.SetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS", $"unix:path={sock}");
+            }
+        }
+
+        // 3. XDG_DATA_DIRS — needed so GIO finds compiled GSettings schemas + themes
+        var dataDirs = Environment.GetEnvironmentVariable("XDG_DATA_DIRS");
+        if (string.IsNullOrEmpty(dataDirs) || !dataDirs.Contains("/usr/share"))
+        {
+            Environment.SetEnvironmentVariable(
+                "XDG_DATA_DIRS",
+                "/usr/local/share:/usr/share" + (string.IsNullOrEmpty(dataDirs) ? "" : ":" + dataDirs));
+        }
+
+        // 4. XDG_CURRENT_DESKTOP — some theme bits key off this
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP")))
+            Environment.SetEnvironmentVariable("XDG_CURRENT_DESKTOP", "KDE");
+
+        // 5. Make GIO use dconf instead of falling back to memory backend
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GSETTINGS_BACKEND")))
+            Environment.SetEnvironmentVariable("GSETTINGS_BACKEND", "dconf");
+    }
+
     public static int Main(string[] args)
     {
+        EnsureSessionEnvironment();
         //GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
         // Parse --page argument
