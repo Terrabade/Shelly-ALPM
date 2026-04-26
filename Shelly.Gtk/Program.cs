@@ -64,9 +64,71 @@ sealed class Program
             Environment.SetEnvironmentVariable("GSETTINGS_BACKEND", "dconf");
     }
 
+    private static void ApplyKdeGtkTheme()
+    {
+        // If the user already forced GTK_THEME, respect it.
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GTK_THEME")))
+            return;
+
+        var home = Environment.GetEnvironmentVariable("HOME") ?? "/root";
+        string? themeName = null;
+        bool preferDark = false;
+
+        // 1. Preferred source: ~/.config/gtk-4.0/settings.ini (written by kde-gtk-config)
+        var gtk4Ini = Path.Combine(home, ".config", "gtk-4.0", "settings.ini");
+        if (File.Exists(gtk4Ini))
+        {
+            foreach (var raw in File.ReadAllLines(gtk4Ini))
+            {
+                var line = raw.Trim();
+                if (line.StartsWith("gtk-theme-name", StringComparison.Ordinal))
+                    themeName = ValueAfterEquals(line);
+                else if (line.StartsWith("gtk-application-prefer-dark-theme", StringComparison.Ordinal))
+                {
+                    var v = ValueAfterEquals(line);
+                    preferDark = v is "1" or "true" or "True";
+                }
+            }
+        }
+
+        // 2. Fallback: detect dark from kdeglobals ColorScheme
+        if (!preferDark)
+        {
+            var kdeGlobals = Path.Combine(home, ".config", "kdeglobals");
+            if (File.Exists(kdeGlobals))
+            {
+                foreach (var raw in File.ReadAllLines(kdeGlobals))
+                {
+                    var line = raw.Trim();
+                    if (line.StartsWith("ColorScheme=", StringComparison.Ordinal))
+                    {
+                        var scheme = line["ColorScheme=".Length..];
+                        if (scheme.Contains("Dark", StringComparison.OrdinalIgnoreCase))
+                            preferDark = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(themeName))
+            themeName = "Adwaita";
+
+        var full = preferDark ? $"{themeName}:dark" : themeName;
+        Environment.SetEnvironmentVariable("GTK_THEME", full);
+        Environment.SetEnvironmentVariable("GTK_APPLICATION_PREFER_DARK_THEME", preferDark ? "1" : "0");
+    }
+
+    private static string? ValueAfterEquals(string line)
+    {
+        var i = line.IndexOf('=');
+        return i < 0 ? null : line[(i + 1)..].Trim().Trim('"', '\'');
+    }
+
     public static int Main(string[] args)
     {
         EnsureSessionEnvironment();
+        ApplyKdeGtkTheme();
         //GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
         // Parse --page argument
@@ -106,7 +168,7 @@ sealed class Program
 
             var cssProvider = CssProvider.New();
             cssProvider.LoadFromString(ResourceHelper.LoadAsset("Assets/style.css"));
-            StyleContext.AddProviderForDisplay(Gdk.Display.GetDefault()!, cssProvider, 800);
+            StyleContext.AddProviderForDisplay(Gdk.Display.GetDefault()!, cssProvider, 600);
 
             var iconTheme = IconTheme.GetForDisplay(Gdk.Display.GetDefault()!);
             iconTheme.AddSearchPath("Assets/svg");
