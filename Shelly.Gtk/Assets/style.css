@@ -34,9 +34,9 @@
 
 .nav-button.selected,
 .nav-button.selected button {
-    background: alpha(@accent_bg_color, 0.2);
-    color: @accent_bg_color;
+    background: alpha(currentColor, 0.1);
     font-weight: bold;
+    border-left: 3px solid currentColor;
 }
 
 .sidebar {
